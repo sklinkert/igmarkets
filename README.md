@@ -1,9 +1,8 @@
-# igmarkets
-Unofficial IG Markets API for Golang
+# igmarkets - Unofficial IG Markets Trading API for Golang
 
-This is an **unofficial** API for [IG Markets Trading API](https://labs.ig.com/rest-trading-api-reference). The StreamingAPI is not part of this project.
+This is an **unofficial** API for [IG Markets Trading REST API](https://labs.ig.com/rest-trading-api-reference). The StreamingAPI is not part of this project.
 
-**Disclaimer**: This library is not associated with IG Markets Limited. If you use this library, you should contact them to make sure they are okay with how you intend to use it.
+**Disclaimer**: This library is not associated with IG Markets Limited or any of its affiliates or subsidiaries. If you use this library, you should contact them to make sure they are okay with how you intend to use it. Use this lib at your own risk.
 
 Reference: https://labs.ig.com/rest-trading-api-reference
 
@@ -30,7 +29,6 @@ Reference: https://labs.ig.com/rest-trading-api-reference
 
 - GET /prices/{epic}/{resolution}/{startDate}/{endDate}
 
-
 ### History
 
 - GET /history/activity
@@ -38,9 +36,36 @@ Reference: https://labs.ig.com/rest-trading-api-reference
 
 ## Example
 
-...tbc...
+```go
+package main
+
+import (
+        "fmt"
+        "github.com/sklinkert/igmarkets"
+        "time"
+)
+
+var ig *igmarkets.IGMarkets
+
+func main() {
+        httpTimeout := time.Duration(5 * time.Second)
+        automaticTokenRefresh := false
+
+        ig = igmarkets.New(igmarkets.DemoAPIURL, "APIKEY", "ACCOUNTID", "USERNAME/IDENTIFIER", "PASSWORD", automaticTokenRefresh, httpTimeout)
+        if err := ig.Login(); err != nil {
+                fmt.Println("Unable to login into IG account", err)
+        }
+
+        // Get current open ask, open bid, close ask, close bid, high ask, high bid, low ask, and low bid
+        prices, _ := ig.GetPrice("CS.D.EURUSD.CFD.IP")
+
+        fmt.Println(prices)
+}
+```
 
 ## TODOs
 
 - Write basic tests
 - Implement /session/refresh-token
+
+Feel free to send PRs.
