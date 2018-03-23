@@ -298,11 +298,12 @@ type IGMarkets struct {
 	Password              string
 	AutomaticTokenRefresh bool
 	OAuthToken            OAuthToken
+	Timeout               time.Duration // HTTP Timeout
 	Lock                  sync.RWMutex
 }
 
 // New - Create new instance of igmarkets
-func New(apiURL, apiKey, accountID, identifier, password string, automaticTokenRefresh bool) *IGMarkets {
+func New(apiURL, apiKey, accountID, identifier, password string, automaticTokenRefresh bool, httpTimeout time.Duration) *IGMarkets {
 	return &IGMarkets{
 		APIURL:                apiURL,
 		APIKey:                apiKey,
@@ -310,6 +311,7 @@ func New(apiURL, apiKey, accountID, identifier, password string, automaticTokenR
 		AutomaticTokenRefresh: automaticTokenRefresh,
 		Identifier:            identifier,
 		Password:              password,
+		Timeout:               httpTimeout,
 	}
 }
 
@@ -335,7 +337,9 @@ func (ig *IGMarkets) Login() error {
 	req.Header.Set("VERSION", "3")
 	req.Header.Set("X-IG-API-KEY", ig.APIKey)
 
-	client := &http.Client{}
+	client := &http.Client{
+		Timeout: ig.Timeout,
+	}
 	resp, err := client.Do(req)
 	if err != nil {
 		if ig.AutomaticTokenRefresh {
@@ -453,7 +457,9 @@ func (ig *IGMarkets) GetTransactions(transactionType string, from time.Time) (Hi
 	req.Header.Set("IG-ACCOUNT-ID", ig.AccountID)
 	ig.Lock.RUnlock()
 
-	client := &http.Client{}
+	client := &http.Client{
+		Timeout: ig.Timeout,
+	}
 	resp, err := client.Do(req)
 	if err != nil {
 		return transactionResp, fmt.Errorf("igmarkets: unable to get transactions: %v", err)
@@ -505,7 +511,9 @@ func (ig *IGMarkets) GetPriceHistory(epic, resolution string, max int, from, to 
 	req.Header.Set("IG-ACCOUNT-ID", ig.AccountID)
 	ig.Lock.RUnlock()
 
-	client := &http.Client{}
+	client := &http.Client{
+		Timeout: ig.Timeout,
+	}
 	resp, err := client.Do(req)
 	if err != nil {
 		return priceResp, fmt.Errorf("igmarkets: unable to get price: %v", err)
@@ -547,7 +555,9 @@ func (ig *IGMarkets) PlaceOTCOrder(order OTCOrderRequest) (string, error) {
 	req.Header.Set("IG-ACCOUNT-ID", ig.AccountID)
 	ig.Lock.RUnlock()
 
-	client := &http.Client{}
+	client := &http.Client{
+		Timeout: ig.Timeout,
+	}
 	resp, err := client.Do(req)
 	if err != nil {
 		return "", fmt.Errorf("igmarkets: unable to send HTTP request: %v", err)
@@ -588,7 +598,9 @@ func (ig *IGMarkets) UpdateOTCOrder(dealID string, order OTCUpdateOrderRequest) 
 	req.Header.Set("IG-ACCOUNT-ID", ig.AccountID)
 	ig.Lock.RUnlock()
 
-	client := &http.Client{}
+	client := &http.Client{
+		Timeout: ig.Timeout,
+	}
 	resp, err := client.Do(req)
 	if err != nil {
 		return "", fmt.Errorf("igmarkets: unable to send HTTP request: %v", err)
@@ -630,7 +642,9 @@ func (ig *IGMarkets) CloseOTCPosition(close OTCPositionCloseRequest) (string, er
 	req.Header.Set("_method", "DELETE")
 	ig.Lock.RUnlock()
 
-	client := &http.Client{}
+	client := &http.Client{
+		Timeout: ig.Timeout,
+	}
 	resp, err := client.Do(req)
 	if err != nil {
 		return "", fmt.Errorf("igmarkets: unable to send HTTP request: %v", err)
@@ -670,7 +684,9 @@ func (ig *IGMarkets) GetDealConfirmation(dealRef string) (OTCDealConfirmation, e
 	req.Header.Set("IG-ACCOUNT-ID", ig.AccountID)
 	ig.Lock.RUnlock()
 
-	client := &http.Client{}
+	client := &http.Client{
+		Timeout: ig.Timeout,
+	}
 	resp, err := client.Do(req)
 	if err != nil {
 		return dealConfirmation, fmt.Errorf("igmarkets: unable to send HTTP request: %v", err)
@@ -709,7 +725,9 @@ func (ig *IGMarkets) GetPositions() (PositionsResponse, error) {
 	req.Header.Set("IG-ACCOUNT-ID", ig.AccountID)
 	ig.Lock.RUnlock()
 
-	client := &http.Client{}
+	client := &http.Client{
+		Timeout: ig.Timeout,
+	}
 	resp, err := client.Do(req)
 	if err != nil {
 		return positions, fmt.Errorf("igmarkets: unable to send HTTP request: %v", err)
@@ -749,7 +767,9 @@ func (ig *IGMarkets) DeleteOTCOrder(dealRef string) error {
 	req.Header.Set("IG-ACCOUNT-ID", ig.AccountID)
 	ig.Lock.RUnlock()
 
-	client := &http.Client{}
+	client := &http.Client{
+		Timeout: ig.Timeout,
+	}
 	resp, err := client.Do(req)
 	if err != nil {
 		return fmt.Errorf("igmarkets: unable to send HTTP request: %v", err)
@@ -790,7 +810,9 @@ func (ig *IGMarkets) PlaceOTCWorkingOrder(order OTCWorkingOrderRequest) (dealRef
 	req.Header.Set("IG-ACCOUNT-ID", ig.AccountID)
 	ig.Lock.RUnlock()
 
-	client := &http.Client{}
+	client := &http.Client{
+		Timeout: ig.Timeout,
+	}
 	resp, err := client.Do(req)
 	if err != nil {
 		return "", fmt.Errorf("igmarkets: unable to send HTTP request: %v", err)
@@ -828,7 +850,9 @@ func (ig *IGMarkets) GetOTCWorkingOrders() (orders []OTCWorkingOrder, err error)
 	req.Header.Set("IG-ACCOUNT-ID", ig.AccountID)
 	ig.Lock.RUnlock()
 
-	client := &http.Client{}
+	client := &http.Client{
+		Timeout: ig.Timeout,
+	}
 	resp, err := client.Do(req)
 	if err != nil {
 		return orders, fmt.Errorf("igmarkets: unable to send HTTP request: %v", err)
@@ -870,7 +894,9 @@ func (ig *IGMarkets) DeleteOTCWorkingOrder(dealRef string) error {
 	req.Header.Set("IG-ACCOUNT-ID", ig.AccountID)
 	ig.Lock.RUnlock()
 
-	client := &http.Client{}
+	client := &http.Client{
+		Timeout: ig.Timeout,
+	}
 	resp, err := client.Do(req)
 	if err != nil {
 		return fmt.Errorf("igmarkets: unable to send HTTP request: %v", err)
