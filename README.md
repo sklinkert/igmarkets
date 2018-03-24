@@ -60,6 +60,40 @@ func main() {
         prices, _ := ig.GetPrice("CS.D.EURUSD.CFD.IP")
 
         fmt.Println(prices)
+
+        // Place a new order
+        order := igmarkets.OTCOrderRequest{
+                Epic:           "CS.D.EURUSD.CFD.IP",
+                OrderType:      "MARKET",
+                CurrencyCode:   "USD",
+                Direction:      "BUY",
+                Size:           1.0,
+                Expiry:         "-",
+                StopDistance:   "10", // Pips
+                LimitDistance:  "5",  // Pips
+                GuaranteedStop: true,
+                ForceOpen:      true,
+        }
+        dealRef, err := ig.PlaceOTCOrder(order)
+        if err != nil {
+                fmt.Println("Unable to place order:", err)
+                return
+        }
+        fmt.Println("New order placed with dealRef", dealRef)
+
+        // Check order status
+        confirmation, err := ig.GetDealConfirmation(dealRef)
+        if err != nil {
+                fmt.Println("Cannot get deal confirmation for:", dealRef, err)
+                return
+        }
+
+        fmt.Println("Order dealRef", dealRef)
+        fmt.Println("DealStatus", confirmation.DealStatus) // "ACCEPTED"
+        fmt.Println("Profit", confirmation.Profit, confirmation.ProfitCurrency)
+        fmt.Println("Status", confirmation.Status) // "OPEN"
+        fmt.Println("Reason", confirmation.Reason)
+        fmt.Println("Level", confirmation.Level) // Buy price
 }
 ```
 
