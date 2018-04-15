@@ -448,7 +448,7 @@ func (ig *IGMarkets) GetTransactions(transactionType string, from time.Time) (Hi
 	fromStr := from.Format("2006-01-02T15:04:05")
 
 	req, err := http.NewRequest("GET", fmt.Sprintf("%s/gateway/deal/history/transactions?from=%s&type=%s",
-		DemoAPIURL, fromStr, transactionType), bodyReq)
+		ig.APIURL, fromStr, transactionType), bodyReq)
 	if err != nil {
 		return transactionResp, fmt.Errorf("igmarkets: unable to get transactions: %v", err)
 	}
@@ -502,7 +502,7 @@ func (ig *IGMarkets) GetPriceHistory(epic, resolution string, max int, from, to 
 	}
 
 	req, err := http.NewRequest("GET", fmt.Sprintf("%s/gateway/deal/prices/%s?resolution=%s",
-		DemoAPIURL, epic, resolution)+limitStr, bodyReq)
+		ig.APIURL, epic, resolution)+limitStr, bodyReq)
 	if err != nil {
 		return priceResp, fmt.Errorf("igmarkets: unable to get price: %v", err)
 	}
@@ -546,7 +546,7 @@ func (ig *IGMarkets) PlaceOTCOrder(order OTCOrderRequest) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("igmarkets: cannot marshal: %v", err)
 	}
-	req, err := http.NewRequest("POST", DemoAPIURL+"/gateway/deal/positions/otc", bytes.NewReader(bodyReq))
+	req, err := http.NewRequest("POST", ig.APIURL+"/gateway/deal/positions/otc", bytes.NewReader(bodyReq))
 	if err != nil {
 		return "", fmt.Errorf("igmarkets: cannot create HTTP request: %v", err)
 	}
@@ -589,7 +589,7 @@ func (ig *IGMarkets) UpdateOTCOrder(dealID string, order OTCUpdateOrderRequest) 
 	if err != nil {
 		return "", fmt.Errorf("igmarkets: cannot marshal: %v", err)
 	}
-	req, err := http.NewRequest("PUT", DemoAPIURL+"/gateway/deal/positions/otc/"+dealID, bytes.NewReader(bodyReq))
+	req, err := http.NewRequest("PUT", ig.APIURL+"/gateway/deal/positions/otc/"+dealID, bytes.NewReader(bodyReq))
 	if err != nil {
 		return "", fmt.Errorf("igmarkets: cannot create HTTP request: %v", err)
 	}
@@ -632,7 +632,7 @@ func (ig *IGMarkets) CloseOTCPosition(close OTCPositionCloseRequest) (string, er
 	if err != nil {
 		return "", fmt.Errorf("igmarkets: cannot marshal: %v", err)
 	}
-	req, err := http.NewRequest("POST", DemoAPIURL+"/gateway/deal/positions/otc", bytes.NewReader(bodyReq))
+	req, err := http.NewRequest("POST", ig.APIURL+"/gateway/deal/positions/otc", bytes.NewReader(bodyReq))
 	if err != nil {
 		return "", fmt.Errorf("igmarkets: cannot create HTTP request: %v", err)
 	}
@@ -675,7 +675,7 @@ func (ig *IGMarkets) GetDealConfirmation(dealRef string) (OTCDealConfirmation, e
 	dealConfirmation := OTCDealConfirmation{}
 	bodyReq := new(bytes.Buffer)
 
-	req, err := http.NewRequest("GET", DemoAPIURL+"/gateway/deal/confirms/"+dealRef, bodyReq)
+	req, err := http.NewRequest("GET", ig.APIURL+"/gateway/deal/confirms/"+dealRef, bodyReq)
 	if err != nil {
 		return dealConfirmation, fmt.Errorf("igmarkets: unable to create HTTP request: %v", err)
 	}
@@ -716,7 +716,7 @@ func (ig *IGMarkets) GetPositions() (PositionsResponse, error) {
 	positions := PositionsResponse{}
 	bodyReq := new(bytes.Buffer)
 
-	req, err := http.NewRequest("GET", DemoAPIURL+"/gateway/deal/positions/", bodyReq)
+	req, err := http.NewRequest("GET", ig.APIURL+"/gateway/deal/positions/", bodyReq)
 	if err != nil {
 		return positions, fmt.Errorf("igmarkets: unable to create HTTP request: %v", err)
 	}
@@ -758,7 +758,7 @@ func (ig *IGMarkets) DeleteOTCOrder(dealRef string) error {
 	dealConfirmation := OTCDealConfirmation{}
 	bodyReq := new(bytes.Buffer)
 
-	req, err := http.NewRequest("DELETE", DemoAPIURL+"/gateway/deal/positions/otc", bodyReq)
+	req, err := http.NewRequest("DELETE", ig.APIURL+"/gateway/deal/positions/otc", bodyReq)
 	if err != nil {
 		return fmt.Errorf("igmarkets: unable to create HTTP request: %v", err)
 	}
@@ -801,7 +801,7 @@ func (ig *IGMarkets) PlaceOTCWorkingOrder(order OTCWorkingOrderRequest) (dealRef
 	if err != nil {
 		return "", fmt.Errorf("igmarkets: unable to marshal JSON: %v", err)
 	}
-	req, err := http.NewRequest("POST", DemoAPIURL+"/gateway/deal/workingorders/otc", bytes.NewReader(bodyReq))
+	req, err := http.NewRequest("POST", ig.APIURL+"/gateway/deal/workingorders/otc", bytes.NewReader(bodyReq))
 	if err != nil {
 		return "", fmt.Errorf("igmarkets: unable to create HTTP request: %v", err)
 	}
@@ -841,7 +841,7 @@ func (ig *IGMarkets) PlaceOTCWorkingOrder(order OTCWorkingOrderRequest) (dealRef
 // GetOTCWorkingOrders - Get all working orders
 func (ig *IGMarkets) GetOTCWorkingOrders() (orders []OTCWorkingOrder, err error) {
 	bodyReq := new(bytes.Buffer)
-	req, err := http.NewRequest("GET", DemoAPIURL+"/gateway/deal/workingorders/", bodyReq)
+	req, err := http.NewRequest("GET", ig.APIURL+"/gateway/deal/workingorders/", bodyReq)
 	if err != nil {
 		return orders, fmt.Errorf("igmarkets: unable to create HTTP request: %v", err)
 	}
@@ -885,7 +885,7 @@ func (ig *IGMarkets) GetOTCWorkingOrders() (orders []OTCWorkingOrder, err error)
 func (ig *IGMarkets) DeleteOTCWorkingOrder(dealRef string) error {
 	bodyReq := new(bytes.Buffer)
 
-	req, err := http.NewRequest("DELETE", DemoAPIURL+"/gateway/deal/workingorders/otc/"+dealRef, bodyReq)
+	req, err := http.NewRequest("DELETE", ig.APIURL+"/gateway/deal/workingorders/otc/"+dealRef, bodyReq)
 	if err != nil {
 		return fmt.Errorf("igmarkets: unable to create HTTP request: %v", err)
 	}
@@ -920,7 +920,7 @@ func (ig *IGMarkets) GetWatchlist(watchListID string) (Watchlist, error) {
 	watchlist := Watchlist{}
 	bodyReq := new(bytes.Buffer)
 
-	req, err := http.NewRequest("GET", DemoAPIURL+"/gateway/deal/watchlists/"+watchListID, bodyReq)
+	req, err := http.NewRequest("GET", ig.APIURL+"/gateway/deal/watchlists/"+watchListID, bodyReq)
 	if err != nil {
 		return watchlist, fmt.Errorf("igmarkets: unable to create HTTP request: %v", err)
 	}
