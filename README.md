@@ -29,6 +29,9 @@ Reference: https://labs.ig.com/rest-trading-api-reference
 
 - GET /prices/{epic}/{resolution}/{startDate}/{endDate}
 
+### Watchlists
+- GET /watchlists/{watchlistid}
+
 ### History
 
 - GET /history/activity

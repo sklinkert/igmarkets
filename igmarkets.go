@@ -80,6 +80,11 @@ type OTCWorkingOrder struct {
 	WorkingOrderData WorkingOrderData `json:"workingOrderData"`
 }
 
+// Watchlist - Response from Watchlist endpoint
+type Watchlist struct {
+	Markets []MarketData `json:"markets"`
+}
+
 // MarketData - Subset of OTCWorkingOrder
 type MarketData struct {
 	Bid                      float64 `json:"bid"`
@@ -908,4 +913,46 @@ func (ig *IGMarkets) DeleteOTCWorkingOrder(dealRef string) error {
 	}
 
 	return nil
+}
+
+// GetWatchlist - Get watchlist from API
+func (ig *IGMarkets) GetWatchlist(watchListID string) (Watchlist, error) {
+	watchlist := Watchlist{}
+	bodyReq := new(bytes.Buffer)
+
+	req, err := http.NewRequest("GET", DemoAPIURL+"/gateway/deal/watchlists/"+watchListID, bodyReq)
+	if err != nil {
+		return watchlist, fmt.Errorf("igmarkets: unable to create HTTP request: %v", err)
+	}
+
+	ig.Lock.RLock()
+	req.Header.Set("Accept", "application/json; charset=UTF-8")
+	req.Header.Set("Content-Type", "application/json; charset=UTF-8")
+	req.Header.Set("VERSION", "1")
+	req.Header.Set("X-IG-API-KEY", ig.APIKey)
+	req.Header.Set("Authorization", "Bearer "+ig.OAuthToken.AccessToken)
+	req.Header.Set("IG-ACCOUNT-ID", ig.AccountID)
+	ig.Lock.RUnlock()
+
+	client := &http.Client{
+		Timeout: ig.Timeout,
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		return watchlist, fmt.Errorf("igmarkets: unable to send HTTP request: %v", err)
+	}
+	defer resp.Body.Close()
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return watchlist, fmt.Errorf("igmarkets: unable to read HTTP body: %v", err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		return watchlist, fmt.Errorf("igmarkets: unexpected HTTP status code: %d", resp.StatusCode)
+	}
+	err = json.Unmarshal(body, &watchlist)
+	if err != nil {
+		return watchlist, fmt.Errorf("igmarkets: unable to unmarshal JSON response: %v", err)
+	}
+
+	return watchlist, nil
 }
