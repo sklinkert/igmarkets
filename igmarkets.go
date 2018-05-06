@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"strconv"
 	"sync"
@@ -311,6 +312,10 @@ type IGMarkets struct {
 
 // New - Create new instance of igmarkets
 func New(apiURL, apiKey, accountID, identifier, password string, automaticTokenRefresh bool, httpTimeout time.Duration) *IGMarkets {
+	if apiURL != DemoAPIURL && apiURL != LiveAPIURL {
+		log.Panic("Invalid endpoint URL", apiURL)
+	}
+
 	return &IGMarkets{
 		APIURL:                apiURL,
 		APIKey:                apiKey,
