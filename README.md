@@ -103,6 +103,5 @@ func main() {
 ## TODOs
 
 - Write basic tests
-- Implement /session/refresh-token
 
 Feel free to send PRs.
