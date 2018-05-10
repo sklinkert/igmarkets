@@ -299,31 +299,29 @@ const (
 
 // IGMarkets - Object with all information we need to access IG REST API
 type IGMarkets struct {
-	APIURL                string
-	APIKey                string
-	AccountID             string
-	Identifier            string
-	Password              string
-	AutomaticTokenRefresh bool
-	OAuthToken            OAuthToken
-	Timeout               time.Duration // HTTP Timeout
-	Lock                  sync.RWMutex
+	APIURL     string
+	APIKey     string
+	AccountID  string
+	Identifier string
+	Password   string
+	OAuthToken OAuthToken
+	Timeout    time.Duration // HTTP Timeout
+	Lock       sync.RWMutex
 }
 
 // New - Create new instance of igmarkets
-func New(apiURL, apiKey, accountID, identifier, password string, automaticTokenRefresh bool, httpTimeout time.Duration) *IGMarkets {
+func New(apiURL, apiKey, accountID, identifier, password string, httpTimeout time.Duration) *IGMarkets {
 	if apiURL != DemoAPIURL && apiURL != LiveAPIURL {
 		log.Panic("Invalid endpoint URL", apiURL)
 	}
 
 	return &IGMarkets{
-		APIURL:                apiURL,
-		APIKey:                apiKey,
-		AccountID:             accountID,
-		AutomaticTokenRefresh: automaticTokenRefresh,
-		Identifier:            identifier,
-		Password:              password,
-		Timeout:               httpTimeout,
+		APIURL:     apiURL,
+		APIKey:     apiKey,
+		AccountID:  accountID,
+		Identifier: identifier,
+		Password:   password,
+		Timeout:    httpTimeout,
 	}
 }
 
@@ -353,85 +351,36 @@ func (ig *IGMarkets) RefreshToken() error {
 	}
 	resp, err := client.Do(req)
 	if err != nil {
-		if ig.AutomaticTokenRefresh {
-			go func() {
-				time.Sleep(time.Duration(5) * time.Second)
-				ig.RefreshToken()
-			}()
-		}
 		return fmt.Errorf("igmarkets: unexpected error while sending HTTP request: %v", err)
 	}
 	defer resp.Body.Close()
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		if ig.AutomaticTokenRefresh {
-			go func() {
-				time.Sleep(time.Duration(5) * time.Second)
-				ig.RefreshToken()
-			}()
-		}
 		return fmt.Errorf("igmarkets: unexpected error while reading body from HTTP request: %v", err)
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		if ig.AutomaticTokenRefresh {
-			go func() {
-				time.Sleep(time.Duration(5) * time.Second)
-				ig.RefreshToken()
-			}()
-		}
 		return fmt.Errorf("igmarkets: unexpected HTTP status code %d", resp.StatusCode)
 	}
 	authResponse := OAuthToken{}
 	err = json.Unmarshal(body, &authResponse)
 	if err != nil {
-		if ig.AutomaticTokenRefresh {
-			go func() {
-				time.Sleep(time.Duration(5) * time.Second)
-				ig.RefreshToken()
-			}()
-		}
 		return fmt.Errorf("igmarkets: unable to unmarshal json response: %v", err)
 	}
 
 	if authResponse.AccessToken == "" {
-		if ig.AutomaticTokenRefresh {
-			go func() {
-				time.Sleep(time.Duration(5) * time.Second)
-				ig.RefreshToken()
-			}()
-		}
 		return fmt.Errorf("igmarkets: got response but access token is empty")
 	}
 
 	expiry, err := strconv.ParseInt(authResponse.ExpiresIn, 10, 32)
 	if err != nil {
-		if ig.AutomaticTokenRefresh {
-			go func() {
-				time.Sleep(time.Duration(5) * time.Second)
-				ig.RefreshToken()
-			}()
-		}
 		return fmt.Errorf("igmarkets: unable to parse OAuthToken expiry field: %v", err)
 	}
 
 	// Refresh token before it will expire
 	if expiry <= 10 {
-		if ig.AutomaticTokenRefresh {
-			go func() {
-				time.Sleep(time.Duration(5) * time.Second)
-				ig.RefreshToken()
-			}()
-		}
 		return fmt.Errorf("igmarkets: token expiry is too short for periodically renewals")
-	}
-
-	if ig.AutomaticTokenRefresh {
-		go func() {
-			time.Sleep(time.Duration((expiry - 7)) * time.Second)
-			ig.RefreshToken()
-		}()
 	}
 
 	ig.Lock.Lock()
@@ -468,86 +417,37 @@ func (ig *IGMarkets) Login() error {
 	}
 	resp, err := client.Do(req)
 	if err != nil {
-		if ig.AutomaticTokenRefresh {
-			go func() {
-				time.Sleep(time.Duration(5) * time.Second)
-				ig.Login()
-			}()
-		}
 		return fmt.Errorf("igmarkets: unexpected error while sending HTTP request: %v", err)
 	}
 	defer resp.Body.Close()
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		if ig.AutomaticTokenRefresh {
-			go func() {
-				time.Sleep(time.Duration(5) * time.Second)
-				ig.Login()
-			}()
-		}
 		return fmt.Errorf("igmarkets: unexpected error while reading body from HTTP request: %v", err)
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		if ig.AutomaticTokenRefresh {
-			go func() {
-				time.Sleep(time.Duration(5) * time.Second)
-				ig.Login()
-			}()
-		}
 		return fmt.Errorf("igmarkets: unexpected HTTP status code %d", resp.StatusCode)
 	}
 
 	authResponse := authResponse{}
 	err = json.Unmarshal(body, &authResponse)
 	if err != nil {
-		if ig.AutomaticTokenRefresh {
-			go func() {
-				time.Sleep(time.Duration(5) * time.Second)
-				ig.Login()
-			}()
-		}
 		return fmt.Errorf("igmarkets: unable to unmarshal json response: %v", err)
 	}
 
 	if authResponse.OAuthToken.AccessToken == "" {
-		if ig.AutomaticTokenRefresh {
-			go func() {
-				time.Sleep(time.Duration(5) * time.Second)
-				ig.Login()
-			}()
-		}
 		return fmt.Errorf("igmarkets: got response but access token is empty")
 	}
 
 	expiry, err := strconv.ParseInt(authResponse.OAuthToken.ExpiresIn, 10, 32)
 	if err != nil {
-		if ig.AutomaticTokenRefresh {
-			go func() {
-				time.Sleep(time.Duration(5) * time.Second)
-				ig.Login()
-			}()
-		}
 		return fmt.Errorf("igmarkets: unable to parse OAuthToken expiry field: %v", err)
 	}
 
 	// Refresh token before it will expire
 	if expiry <= 10 {
-		if ig.AutomaticTokenRefresh {
-			go func() {
-				time.Sleep(time.Duration(5) * time.Second)
-				ig.Login()
-			}()
-		}
 		return fmt.Errorf("igmarkets: token expiry is too short for periodically renewals")
-	}
-
-	if ig.AutomaticTokenRefresh {
-		go func() {
-			time.Sleep(time.Duration((expiry - 7)) * time.Second)
-			ig.RefreshToken()
-		}()
 	}
 
 	ig.Lock.Lock()

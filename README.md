@@ -52,9 +52,8 @@ var ig *igmarkets.IGMarkets
 
 func main() {
         httpTimeout := time.Duration(5 * time.Second)
-        automaticTokenRefresh := false
 
-        ig = igmarkets.New(igmarkets.DemoAPIURL, "APIKEY", "ACCOUNTID", "USERNAME/IDENTIFIER", "PASSWORD", automaticTokenRefresh, httpTimeout)
+        ig = igmarkets.New(igmarkets.DemoAPIURL, "APIKEY", "ACCOUNTID", "USERNAME/IDENTIFIER", "PASSWORD", httpTimeout)
         if err := ig.Login(); err != nil {
                 fmt.Println("Unable to login into IG account", err)
         }
