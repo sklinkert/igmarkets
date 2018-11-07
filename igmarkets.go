@@ -225,13 +225,13 @@ type OTCDealConfirmation struct {
 
 // DealingRules - Part of MarketsResponse
 type DealingRules struct {
-	MarketOrderPreference         UnitValueFloat `json:"marketOrderPreference"`
+	MarketOrderPreference         string         `json:"marketOrderPreference"`
+	TrailingStopsPreference       string         `json:"trailingStopsPreference"`
 	MaxStopOrLimitDistance        UnitValueFloat `json:"maxStopOrLimitDistance"`
 	MinControlledRiskStopDistance UnitValueFloat `json:"minControlledRiskStopDistance"`
 	MinDealSize                   UnitValueFloat `json:"minDealSize"`
 	MinNormalStopOrLimitDistance  UnitValueFloat `json:"minNormalStopOrLimitDistance"`
 	MinStepDistance               UnitValueFloat `json:"minStepDistance"`
-	TrailingStopsPreference       UnitValueFloat `json:"trailingStopsPreference"`
 }
 
 // Currency - Part of MarketsResponse
