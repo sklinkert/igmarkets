@@ -223,6 +223,80 @@ type OTCDealConfirmation struct {
 	DealReference         string         `json:"dealReference,omitempty"`
 }
 
+// DealingRules - Part of MarketsResponse
+type DealingRules struct {
+	MarketOrderPreference         UnitValueFloat `json:"marketOrderPreference"`
+	MaxStopOrLimitDistance        UnitValueFloat `json:"maxStopOrLimitDistance"`
+	MinControlledRiskStopDistance UnitValueFloat `json:"minControlledRiskStopDistance"`
+	MinDealSize                   UnitValueFloat `json:"minDealSize"`
+	MinNormalStopOrLimitDistance  UnitValueFloat `json:"minNormalStopOrLimitDistance"`
+	MinStepDistance               UnitValueFloat `json:"minStepDistance"`
+	TrailingStopsPreference       UnitValueFloat `json:"trailingStopsPreference"`
+}
+
+// Currency - Part of MarketsResponse
+type Currency struct {
+	BaseExchangeRate float64 `json:"baseExchangeRate"`
+	Code             string  `json:"code"`
+	ExchangeRate     float64 `json:"exchangeRate"`
+	IsDefault        bool    `json:"isDefault"`
+	Symbol           string  `json:"symbol"`
+}
+
+// UnitValueFloat - Part of MarketsResponse
+type UnitValueFloat struct {
+	Unit  string  `json:"unit"`
+	Value float64 `json:"value"`
+}
+
+// Instrument - Part of MarketsResponse
+type Instrument struct {
+	ChartCode                string         `json:"chartCode"`
+	ControlledRiskAllowed    bool           `json:"controlledRiskAllowed"`
+	Country                  string         `json:"country"`
+	Currencies               []Currency     `json:"currencies"`
+	Epic                     string         `json:"epic"`
+	Expiry                   string         `json:"expiry"`
+	StreamingPricesAvailable bool           `json:"streamingPricesAvailable"`
+	ForceOpenAllowed         bool           `json:"forceOpenAllowed"`
+	Unit                     string         `json:"unit"`
+	Type                     string         `json:"type"`
+	MarketID                 string         `json:"marketID"`
+	LotSize                  float64        `json:"lotSize"`
+	MarginFactor             float64        `json:"marginFactor"`
+	MarginFactorUnit         string         `json:"marginFactorUnit"`
+	SlippageFactor           UnitValueFloat `json:"slippageFactor"`
+	LimitedRiskPremium       UnitValueFloat `json:"limitedRiskPremium"`
+	NewsCode                 string         `json:"newsCode"`
+	ValueOfOnePip            string         `json:"valueOfOnePip"`
+	OnePipMeans              string         `json:"onePipMeans"`
+	ContractSize             string         `json:"contractSize"`
+	SpecialInfo              []string       `json:"specialInfo"`
+}
+
+// Snapshot - Part of MarketsResponse
+type Snapshot struct {
+	MarketStatus              string  `json:"marketStatus"`
+	NetChange                 float64 `json:"netChange"`
+	PercentageChange          float64 `json:"percentageChange"`
+	UpdateTime                string  `json:"updateTime"`
+	DelayTime                 float64 `json:"delayTime"`
+	Bid                       float64 `json:"bid"`
+	Offer                     float64 `json:"offer"`
+	High                      float64 `json:"high"`
+	Low                       float64 `json:"low"`
+	DecimalPlacesFactor       float64 `json:"decimalPlacesFactor"`
+	ScalingFactor             float64 `json:"scalingFactor"`
+	ControlledRiskExtraSpread float64 `json:"controlledRiskExtraSpread"`
+}
+
+// MarketsResponse - Marekt response for /markets/{epic}
+type MarketsResponse struct {
+	DealingRules DealingRules `json:"dealingRules"`
+	Instrument   Instrument   `json:"instrument"`
+	Snapshot     Snapshot     `json:"snapshot"`
+}
+
 type refreshTokenRequest struct {
 	RefreshToken string `json:"refresh_token"`
 }
@@ -976,4 +1050,49 @@ func (ig *IGMarkets) GetWatchlist(watchListID string) (Watchlist, error) {
 	}
 
 	return watchlist, nil
+}
+
+// GetMarkets - Return markets information for given epic
+func (ig *IGMarkets) GetMarkets(epic string) (MarketsResponse, error) {
+	bodyReq := new(bytes.Buffer)
+	marketsResponse := MarketsResponse{}
+
+	req, err := http.NewRequest("GET", fmt.Sprintf("%s/gateway/deal/markets/%s",
+		ig.APIURL, epic), bodyReq)
+	if err != nil {
+		return marketsResponse, fmt.Errorf("igmarkets: unable to get markets data: %v", err)
+	}
+
+	ig.Lock.RLock()
+	req.Header.Set("Accept", "application/json; charset=UTF-8")
+	req.Header.Set("Content-Type", "application/json; charset=UTF-8")
+	req.Header.Set("VERSION", "3")
+	req.Header.Set("X-IG-API-KEY", ig.APIKey)
+	req.Header.Set("Authorization", "Bearer "+ig.OAuthToken.AccessToken)
+	req.Header.Set("IG-ACCOUNT-ID", ig.AccountID)
+	ig.Lock.RUnlock()
+
+	client := &http.Client{
+		Timeout: ig.Timeout,
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		return marketsResponse, fmt.Errorf("igmarkets: unable to get markets data: %v", err)
+	}
+	defer resp.Body.Close()
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return marketsResponse,
+			fmt.Errorf("igmarkets: unable to get body of transactions markets data: %v", err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		return marketsResponse,
+			fmt.Errorf("igmarkets: unexpected HTTP status code: %d", resp.StatusCode)
+	}
+	if err := json.Unmarshal(body, &marketsResponse); err != nil {
+		return marketsResponse, fmt.Errorf("igmarkets: unable to unmarshal JSON response: %v", err)
+	}
+
+	return marketsResponse, nil
 }
