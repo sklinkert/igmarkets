@@ -12,6 +12,10 @@ Reference: https://labs.ig.com/rest-trading-api-reference
 
 - POST /session
 
+### Markets
+
+- GET /markets/{epic}
+
 ### Positions
 
 - POST /positions/otc
