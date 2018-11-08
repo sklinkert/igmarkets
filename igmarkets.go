@@ -386,8 +386,8 @@ type IGMarkets struct {
 	Identifier string
 	Password   string
 	OAuthToken OAuthToken
-	Timeout    time.Duration // HTTP Timeout
 	Lock       sync.RWMutex
+	httpClient *http.Client
 }
 
 // New - Create new instance of igmarkets
@@ -396,13 +396,20 @@ func New(apiURL, apiKey, accountID, identifier, password string, httpTimeout tim
 		log.Panic("Invalid endpoint URL", apiURL)
 	}
 
+	httpClient := &http.Client{
+		Timeout: httpTimeout,
+		Transport: &http.Transport{
+			MaxIdleConnsPerHost: 5,
+		},
+	}
+
 	return &IGMarkets{
 		APIURL:     apiURL,
 		APIKey:     apiKey,
 		AccountID:  accountID,
 		Identifier: identifier,
 		Password:   password,
-		Timeout:    httpTimeout,
+		httpClient: httpClient,
 	}
 }
 
@@ -719,10 +726,7 @@ func (ig *IGMarkets) doRequest(req *http.Request, endpointVersion int, igRespons
 	req.Header.Set("Content-Type", "application/json; charset=UTF-8")
 	req.Header.Set("VERSION", fmt.Sprintf("%d", endpointVersion))
 
-	client := &http.Client{
-		Timeout: ig.Timeout,
-	}
-	resp, err := client.Do(req)
+	resp, err := ig.httpClient.Do(req)
 	if err != nil {
 		return igResponse, fmt.Errorf("igmarkets: unable to get markets data: %v", err)
 	}
