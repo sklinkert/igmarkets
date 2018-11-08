@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"reflect"
 	"strconv"
 	"sync"
 	"time"
@@ -75,7 +76,12 @@ type OTCWorkingOrderRequest struct {
 	Type           string  `json:"type"`
 }
 
-// OTCWorkingOrder - Working order
+// WorkingOrders - Working orders
+type WorkingOrders struct {
+	WorkingOrders []OTCWorkingOrder `json:"workingOrders"`
+}
+
+// OTCWorkingOrder - Part of WorkingOrders
 type OTCWorkingOrder struct {
 	MarketData       MarketData       `json:"marketData"`
 	WorkingOrderData WorkingOrderData `json:"workingOrderData"`
@@ -306,6 +312,7 @@ type authRequest struct {
 	Password   string `json:"password"`
 }
 
+// authResponse - IG auth response
 type authResponse struct {
 	AccountID             string     `json:"accountId"`
 	ClientID              string     `json:"clientId"`
@@ -415,39 +422,15 @@ func (ig *IGMarkets) RefreshToken() error {
 	if err != nil {
 		return fmt.Errorf("igmarkets: unable to send HTTP request: %v", err)
 	}
-	req.Header.Set("Accept", "application/json; charset=UTF-8")
-	req.Header.Set("Content-Type", "application/json; charset=UTF-8")
-	req.Header.Set("VERSION", "1")
-	req.Header.Set("X-IG-API-KEY", ig.APIKey)
 
-	client := &http.Client{
-		Timeout: ig.Timeout,
-	}
-	resp, err := client.Do(req)
-	if err != nil {
-		return fmt.Errorf("igmarkets: unexpected error while sending HTTP request: %v", err)
-	}
-	defer resp.Body.Close()
+	igResponseInterface, err := ig.doRequest(req, 1, OAuthToken{})
+	oauthToken, _ := igResponseInterface.(*OAuthToken)
 
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return fmt.Errorf("igmarkets: unexpected error while reading body from HTTP request: %v", err)
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("igmarkets: unexpected HTTP status code %d", resp.StatusCode)
-	}
-	authResponse := OAuthToken{}
-	err = json.Unmarshal(body, &authResponse)
-	if err != nil {
-		return fmt.Errorf("igmarkets: unable to unmarshal json response: %v", err)
-	}
-
-	if authResponse.AccessToken == "" {
+	if oauthToken.AccessToken == "" {
 		return fmt.Errorf("igmarkets: got response but access token is empty")
 	}
 
-	expiry, err := strconv.ParseInt(authResponse.ExpiresIn, 10, 32)
+	expiry, err := strconv.ParseInt(oauthToken.ExpiresIn, 10, 32)
 	if err != nil {
 		return fmt.Errorf("igmarkets: unable to parse OAuthToken expiry field: %v", err)
 	}
@@ -458,7 +441,7 @@ func (ig *IGMarkets) RefreshToken() error {
 	}
 
 	ig.Lock.Lock()
-	ig.OAuthToken = authResponse
+	ig.OAuthToken = *oauthToken
 	ig.Lock.Unlock()
 
 	return nil
@@ -481,34 +464,9 @@ func (ig *IGMarkets) Login() error {
 	if err != nil {
 		return fmt.Errorf("igmarkets: unable to send HTTP request: %v", err)
 	}
-	req.Header.Set("Accept", "application/json; charset=UTF-8")
-	req.Header.Set("Content-Type", "application/json; charset=UTF-8")
-	req.Header.Set("VERSION", "3")
-	req.Header.Set("X-IG-API-KEY", ig.APIKey)
 
-	client := &http.Client{
-		Timeout: ig.Timeout,
-	}
-	resp, err := client.Do(req)
-	if err != nil {
-		return fmt.Errorf("igmarkets: unexpected error while sending HTTP request: %v", err)
-	}
-	defer resp.Body.Close()
-
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return fmt.Errorf("igmarkets: unexpected error while reading body from HTTP request: %v", err)
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("igmarkets: unexpected HTTP status code %d", resp.StatusCode)
-	}
-
-	authResponse := authResponse{}
-	err = json.Unmarshal(body, &authResponse)
-	if err != nil {
-		return fmt.Errorf("igmarkets: unable to unmarshal json response: %v", err)
-	}
+	igResponseInterface, err := ig.doRequest(req, 3, authResponse{})
+	authResponse, _ := igResponseInterface.(*authResponse)
 
 	if authResponse.OAuthToken.AccessToken == "" {
 		return fmt.Errorf("igmarkets: got response but access token is empty")
@@ -532,60 +490,30 @@ func (ig *IGMarkets) Login() error {
 }
 
 // GetPrice - Return the minute prices for the last 10 minutes for the given epic.
-func (ig *IGMarkets) GetPrice(epic string) (PriceResponse, error) {
+func (ig *IGMarkets) GetPrice(epic string) (*PriceResponse, error) {
 	return ig.GetPriceHistory(epic, ResolutionSecond, 1, time.Time{}, time.Time{})
 }
 
 // GetTransactions - Return all transaction
-func (ig *IGMarkets) GetTransactions(transactionType string, from time.Time) (HistoryTransactionResponse, error) {
+func (ig *IGMarkets) GetTransactions(transactionType string, from time.Time) (*HistoryTransactionResponse, error) {
 	bodyReq := new(bytes.Buffer)
-	transactionResp := HistoryTransactionResponse{}
 	fromStr := from.Format("2006-01-02T15:04:05")
 
 	req, err := http.NewRequest("GET", fmt.Sprintf("%s/gateway/deal/history/transactions?from=%s&type=%s",
 		ig.APIURL, fromStr, transactionType), bodyReq)
 	if err != nil {
-		return transactionResp, fmt.Errorf("igmarkets: unable to get transactions: %v", err)
+		return &HistoryTransactionResponse{}, fmt.Errorf("igmarkets: unable to get transactions: %v", err)
 	}
 
-	ig.Lock.RLock()
-	req.Header.Set("Accept", "application/json; charset=UTF-8")
-	req.Header.Set("Content-Type", "application/json; charset=UTF-8")
-	req.Header.Set("VERSION", "2")
-	req.Header.Set("X-IG-API-KEY", ig.APIKey)
-	req.Header.Set("Authorization", "Bearer "+ig.OAuthToken.AccessToken)
-	req.Header.Set("IG-ACCOUNT-ID", ig.AccountID)
-	ig.Lock.RUnlock()
+	igResponseInterface, err := ig.doRequest(req, 2, HistoryTransactionResponse{})
+	igResponse, _ := igResponseInterface.(*HistoryTransactionResponse)
 
-	client := &http.Client{
-		Timeout: ig.Timeout,
-	}
-	resp, err := client.Do(req)
-	if err != nil {
-		return transactionResp, fmt.Errorf("igmarkets: unable to get transactions: %v", err)
-	}
-	defer resp.Body.Close()
-
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return transactionResp,
-			fmt.Errorf("igmarkets: unable to get body of transactions request: %v", err)
-	}
-	if resp.StatusCode != http.StatusOK {
-		return transactionResp,
-			fmt.Errorf("igmarkets: unexpected HTTP status code: %d", resp.StatusCode)
-	}
-	if err := json.Unmarshal(body, &transactionResp); err != nil {
-		return transactionResp, fmt.Errorf("igmarkets: unable to unmarshal JSON response: %v", err)
-	}
-
-	return transactionResp, nil
+	return igResponse, err
 }
 
 // GetPriceHistory - Return the minute prices for the last 10 minutes for the given epic.
-func (ig *IGMarkets) GetPriceHistory(epic, resolution string, max int, from, to time.Time) (PriceResponse, error) {
+func (ig *IGMarkets) GetPriceHistory(epic, resolution string, max int, from, to time.Time) (*PriceResponse, error) {
 	bodyReq := new(bytes.Buffer)
-	priceResp := PriceResponse{}
 
 	limitStr := ""
 	if !to.IsZero() && !from.IsZero() {
@@ -599,40 +527,13 @@ func (ig *IGMarkets) GetPriceHistory(epic, resolution string, max int, from, to 
 	req, err := http.NewRequest("GET", fmt.Sprintf("%s/gateway/deal/prices/%s?resolution=%s",
 		ig.APIURL, epic, resolution)+limitStr, bodyReq)
 	if err != nil {
-		return priceResp, fmt.Errorf("igmarkets: unable to get price: %v", err)
+		return &PriceResponse{}, fmt.Errorf("igmarkets: unable to get price: %v", err)
 	}
 
-	ig.Lock.RLock()
-	req.Header.Set("Accept", "application/json; charset=UTF-8")
-	req.Header.Set("Content-Type", "application/json; charset=UTF-8")
-	req.Header.Set("VERSION", "3")
-	req.Header.Set("X-IG-API-KEY", ig.APIKey)
-	req.Header.Set("Authorization", "Bearer "+ig.OAuthToken.AccessToken)
-	req.Header.Set("IG-ACCOUNT-ID", ig.AccountID)
-	ig.Lock.RUnlock()
+	igResponseInterface, err := ig.doRequest(req, 3, PriceResponse{})
+	igResponse, _ := igResponseInterface.(*PriceResponse)
 
-	client := &http.Client{
-		Timeout: ig.Timeout,
-	}
-	resp, err := client.Do(req)
-	if err != nil {
-		return priceResp, fmt.Errorf("igmarkets: unable to get price: %v", err)
-	}
-	defer resp.Body.Close()
-
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return priceResp, fmt.Errorf("igmarkets: unable to read HTTP body: %v", err)
-	}
-	if resp.StatusCode != http.StatusOK {
-		return priceResp,
-			fmt.Errorf("igmarkets: unexpected HTTP status code: %d", resp.StatusCode)
-	}
-	if err := json.Unmarshal(body, &priceResp); err != nil {
-		return priceResp, fmt.Errorf("igmarkets: unable to unmarshal JSON response: %v", err)
-	}
-
-	return priceResp, nil
+	return igResponse, err
 }
 
 // PlaceOTCOrder - Place an OTC order
@@ -646,36 +547,10 @@ func (ig *IGMarkets) PlaceOTCOrder(order OTCOrderRequest) (string, error) {
 		return "", fmt.Errorf("igmarkets: cannot create HTTP request: %v", err)
 	}
 
-	ig.Lock.RLock()
-	req.Header.Set("Accept", "application/json; charset=UTF-8")
-	req.Header.Set("Content-Type", "application/json; charset=UTF-8")
-	req.Header.Set("VERSION", "2")
-	req.Header.Set("X-IG-API-KEY", ig.APIKey)
-	req.Header.Set("Authorization", "Bearer "+ig.OAuthToken.AccessToken)
-	req.Header.Set("IG-ACCOUNT-ID", ig.AccountID)
-	ig.Lock.RUnlock()
+	igResponseInterface, err := ig.doRequest(req, 2, DealReference{})
+	igResponse, _ := igResponseInterface.(*DealReference)
 
-	client := &http.Client{
-		Timeout: ig.Timeout,
-	}
-	resp, err := client.Do(req)
-	if err != nil {
-		return "", fmt.Errorf("igmarkets: unable to send HTTP request: %v", err)
-	}
-	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return "", fmt.Errorf("igmarkets: unable to read HTTP body: %v", err)
-	}
-	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("igmarkets: unexpected HTTP status code: %d", resp.StatusCode)
-	}
-	ref := DealReference{}
-	if err := json.Unmarshal(body, &ref); err != nil {
-		return "", fmt.Errorf("igmarkets: unable to unmarshal JSON response: %v", err)
-	}
-
-	return ref.DealReference, nil
+	return igResponse.DealReference, err
 }
 
 // UpdateOTCOrder - Update an exisiting OTC order
@@ -689,36 +564,10 @@ func (ig *IGMarkets) UpdateOTCOrder(dealID string, order OTCUpdateOrderRequest) 
 		return "", fmt.Errorf("igmarkets: cannot create HTTP request: %v", err)
 	}
 
-	ig.Lock.RLock()
-	req.Header.Set("Accept", "application/json; charset=UTF-8")
-	req.Header.Set("Content-Type", "application/json; charset=UTF-8")
-	req.Header.Set("VERSION", "2")
-	req.Header.Set("X-IG-API-KEY", ig.APIKey)
-	req.Header.Set("Authorization", "Bearer "+ig.OAuthToken.AccessToken)
-	req.Header.Set("IG-ACCOUNT-ID", ig.AccountID)
-	ig.Lock.RUnlock()
+	igResponseInterface, err := ig.doRequest(req, 2, DealReference{})
+	igResponse, _ := igResponseInterface.(*DealReference)
 
-	client := &http.Client{
-		Timeout: ig.Timeout,
-	}
-	resp, err := client.Do(req)
-	if err != nil {
-		return "", fmt.Errorf("igmarkets: unable to send HTTP request: %v", err)
-	}
-	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return "", fmt.Errorf("igmarkets: unable to read HTTP body: %v", err)
-	}
-	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("igmarkets: unexpected HTTP status code: %d", resp.StatusCode)
-	}
-	ref := DealReference{}
-	if err := json.Unmarshal(body, &ref); err != nil {
-		return "", fmt.Errorf("igmarkets: unable to unmarshal JSON response: %v", err)
-	}
-
-	return ref.DealReference, nil
+	return igResponse.DealReference, err
 }
 
 // CloseOTCPosition - Close an OTC position
@@ -732,125 +581,46 @@ func (ig *IGMarkets) CloseOTCPosition(close OTCPositionCloseRequest) (string, er
 		return "", fmt.Errorf("igmarkets: cannot create HTTP request: %v", err)
 	}
 
-	ig.Lock.RLock()
-	req.Header.Set("Accept", "application/json; charset=UTF-8")
-	req.Header.Set("Content-Type", "application/json; charset=UTF-8")
-	req.Header.Set("VERSION", "1")
-	req.Header.Set("X-IG-API-KEY", ig.APIKey)
-	req.Header.Set("Authorization", "Bearer "+ig.OAuthToken.AccessToken)
-	req.Header.Set("IG-ACCOUNT-ID", ig.AccountID)
 	req.Header.Set("_method", "DELETE")
-	ig.Lock.RUnlock()
 
-	client := &http.Client{
-		Timeout: ig.Timeout,
-	}
-	resp, err := client.Do(req)
-	if err != nil {
-		return "", fmt.Errorf("igmarkets: unable to send HTTP request: %v", err)
-	}
-	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return "", fmt.Errorf("igmarkets: unable to read HTTP body: %v", err)
-	}
-	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("igmarkets: unexpected HTTP status code: %d", resp.StatusCode)
-	}
-	ref := DealReference{}
-	if err := json.Unmarshal(body, &ref); err != nil {
-		return "", fmt.Errorf("igmarkets: unable to unmarshal JSON response: %v", err)
-	}
+	igResponseInterface, err := ig.doRequest(req, 1, DealReference{})
+	igResponse, _ := igResponseInterface.(*DealReference)
 
-	return ref.DealReference, nil
+	return igResponse.DealReference, err
 }
 
 // GetDealConfirmation - Check if the given order was closed/filled
-func (ig *IGMarkets) GetDealConfirmation(dealRef string) (OTCDealConfirmation, error) {
-	dealConfirmation := OTCDealConfirmation{}
+func (ig *IGMarkets) GetDealConfirmation(dealRef string) (*OTCDealConfirmation, error) {
 	bodyReq := new(bytes.Buffer)
 
 	req, err := http.NewRequest("GET", ig.APIURL+"/gateway/deal/confirms/"+dealRef, bodyReq)
 	if err != nil {
-		return dealConfirmation, fmt.Errorf("igmarkets: unable to create HTTP request: %v", err)
+		return &OTCDealConfirmation{}, fmt.Errorf("igmarkets: unable to create HTTP request: %v", err)
 	}
 
-	ig.Lock.RLock()
-	req.Header.Set("Accept", "application/json; charset=UTF-8")
-	req.Header.Set("Content-Type", "application/json; charset=UTF-8")
-	req.Header.Set("VERSION", "1")
-	req.Header.Set("X-IG-API-KEY", ig.APIKey)
-	req.Header.Set("Authorization", "Bearer "+ig.OAuthToken.AccessToken)
-	req.Header.Set("IG-ACCOUNT-ID", ig.AccountID)
-	ig.Lock.RUnlock()
+	igResponseInterface, err := ig.doRequest(req, 1, OTCDealConfirmation{})
+	igResponse, _ := igResponseInterface.(*OTCDealConfirmation)
 
-	client := &http.Client{
-		Timeout: ig.Timeout,
-	}
-	resp, err := client.Do(req)
-	if err != nil {
-		return dealConfirmation, fmt.Errorf("igmarkets: unable to send HTTP request: %v", err)
-	}
-	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return dealConfirmation, fmt.Errorf("igmarkets: unable to read HTTP body: %v", err)
-	}
-	if resp.StatusCode != http.StatusOK {
-		return dealConfirmation, fmt.Errorf("igmarkets: unexpected HTTP status code: %d", resp.StatusCode)
-	}
-	if err := json.Unmarshal(body, &dealConfirmation); err != nil {
-		return dealConfirmation, fmt.Errorf("igmarkets: unable to unmarshal JSON response: %v", err)
-	}
-
-	return dealConfirmation, nil
+	return igResponse, err
 }
 
 // GetPositions - Get all open positions
-func (ig *IGMarkets) GetPositions() (PositionsResponse, error) {
-	positions := PositionsResponse{}
+func (ig *IGMarkets) GetPositions() (*PositionsResponse, error) {
 	bodyReq := new(bytes.Buffer)
 
 	req, err := http.NewRequest("GET", ig.APIURL+"/gateway/deal/positions/", bodyReq)
 	if err != nil {
-		return positions, fmt.Errorf("igmarkets: unable to create HTTP request: %v", err)
+		return &PositionsResponse{}, fmt.Errorf("igmarkets: unable to create HTTP request: %v", err)
 	}
 
-	ig.Lock.RLock()
-	req.Header.Set("Accept", "application/json; charset=UTF-8")
-	req.Header.Set("Content-Type", "application/json; charset=UTF-8")
-	req.Header.Set("VERSION", "2")
-	req.Header.Set("X-IG-API-KEY", ig.APIKey)
-	req.Header.Set("Authorization", "Bearer "+ig.OAuthToken.AccessToken)
-	req.Header.Set("IG-ACCOUNT-ID", ig.AccountID)
-	ig.Lock.RUnlock()
+	igResponseInterface, err := ig.doRequest(req, 2, PositionsResponse{})
+	igResponse, _ := igResponseInterface.(*PositionsResponse)
 
-	client := &http.Client{
-		Timeout: ig.Timeout,
-	}
-	resp, err := client.Do(req)
-	if err != nil {
-		return positions, fmt.Errorf("igmarkets: unable to send HTTP request: %v", err)
-	}
-	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return positions, fmt.Errorf("igmarkets: unable to read HTTP body: %v", err)
-	}
-	if resp.StatusCode != http.StatusOK {
-		return positions, fmt.Errorf("igmarkets: unexpected HTTP status code: %d", resp.StatusCode)
-	}
-	err = json.Unmarshal(body, &positions)
-	if err != nil {
-		return positions, fmt.Errorf("igmarkets: unable to unmarshal JSON response: %v", err)
-	}
-
-	return positions, nil
+	return igResponse, err
 }
 
-// DeleteOTCOrder - Delete order
-func (ig *IGMarkets) DeleteOTCOrder(dealRef string) error {
-	dealConfirmation := OTCDealConfirmation{}
+// DeletePositionsOTC - Closes one or more OTC positions
+func (ig *IGMarkets) DeletePositionsOTC() error {
 	bodyReq := new(bytes.Buffer)
 
 	req, err := http.NewRequest("DELETE", ig.APIURL+"/gateway/deal/positions/otc", bodyReq)
@@ -858,40 +628,12 @@ func (ig *IGMarkets) DeleteOTCOrder(dealRef string) error {
 		return fmt.Errorf("igmarkets: unable to create HTTP request: %v", err)
 	}
 
-	ig.Lock.RLock()
-	req.Header.Set("Accept", "application/json; charset=UTF-8")
-	req.Header.Set("Content-Type", "application/json; charset=UTF-8")
-	req.Header.Set("VERSION", "1")
-	req.Header.Set("X-IG-API-KEY", ig.APIKey)
-	req.Header.Set("Authorization", "Bearer "+ig.OAuthToken.AccessToken)
-	req.Header.Set("IG-ACCOUNT-ID", ig.AccountID)
-	ig.Lock.RUnlock()
-
-	client := &http.Client{
-		Timeout: ig.Timeout,
-	}
-	resp, err := client.Do(req)
-	if err != nil {
-		return fmt.Errorf("igmarkets: unable to send HTTP request: %v", err)
-	}
-	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return fmt.Errorf("igmarkets: unable to read HTTP body: %v", err)
-	}
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("igmarkets: unexpected HTTP status code: %d", resp.StatusCode)
-	}
-	err = json.Unmarshal(body, &dealConfirmation)
-	if err != nil {
-		return fmt.Errorf("igmarkets: unable to unmarshal JSON response: %v", err)
-	}
-
-	return nil
+	_, err = ig.doRequest(req, 1, nil)
+	return err
 }
 
 // PlaceOTCWorkingOrder - Place an OTC workingorder
-func (ig *IGMarkets) PlaceOTCWorkingOrder(order OTCWorkingOrderRequest) (dealRef string, err error) {
+func (ig *IGMarkets) PlaceOTCWorkingOrder(order OTCWorkingOrderRequest) (string, error) {
 	bodyReq, err := json.Marshal(&order)
 	if err != nil {
 		return "", fmt.Errorf("igmarkets: unable to marshal JSON: %v", err)
@@ -901,79 +643,24 @@ func (ig *IGMarkets) PlaceOTCWorkingOrder(order OTCWorkingOrderRequest) (dealRef
 		return "", fmt.Errorf("igmarkets: unable to create HTTP request: %v", err)
 	}
 
-	ig.Lock.RLock()
-	req.Header.Set("Accept", "application/json; charset=UTF-8")
-	req.Header.Set("Content-Type", "application/json; charset=UTF-8")
-	req.Header.Set("VERSION", "2")
-	req.Header.Set("X-IG-API-KEY", ig.APIKey)
-	req.Header.Set("Authorization", "Bearer "+ig.OAuthToken.AccessToken)
-	req.Header.Set("IG-ACCOUNT-ID", ig.AccountID)
-	ig.Lock.RUnlock()
+	igResponseInterface, err := ig.doRequest(req, 2, DealReference{})
+	igResponse, _ := igResponseInterface.(*DealReference)
 
-	client := &http.Client{
-		Timeout: ig.Timeout,
-	}
-	resp, err := client.Do(req)
-	if err != nil {
-		return "", fmt.Errorf("igmarkets: unable to send HTTP request: %v", err)
-	}
-	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return "", fmt.Errorf("igmarkets: unable to read HTTP body: %v", err)
-	}
-	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("igmarkets: unexpected HTTP status code: %d", resp.StatusCode)
-	}
-	ref := DealReference{}
-	if err := json.Unmarshal(body, &ref); err != nil {
-		return "", fmt.Errorf("igmarkets: unable to unmarshal JSON response: %v", err)
-	}
-
-	return ref.DealReference, nil
+	return igResponse.DealReference, err
 }
 
 // GetOTCWorkingOrders - Get all working orders
-func (ig *IGMarkets) GetOTCWorkingOrders() (orders []OTCWorkingOrder, err error) {
+func (ig *IGMarkets) GetOTCWorkingOrders() (*WorkingOrders, error) {
 	bodyReq := new(bytes.Buffer)
 	req, err := http.NewRequest("GET", ig.APIURL+"/gateway/deal/workingorders/", bodyReq)
 	if err != nil {
-		return orders, fmt.Errorf("igmarkets: unable to create HTTP request: %v", err)
+		return &WorkingOrders{}, fmt.Errorf("igmarkets: unable to create HTTP request: %v", err)
 	}
 
-	ig.Lock.RLock()
-	req.Header.Set("Accept", "application/json; charset=UTF-8")
-	req.Header.Set("Content-Type", "application/json; charset=UTF-8")
-	req.Header.Set("VERSION", "2")
-	req.Header.Set("X-IG-API-KEY", ig.APIKey)
-	req.Header.Set("Authorization", "Bearer "+ig.OAuthToken.AccessToken)
-	req.Header.Set("IG-ACCOUNT-ID", ig.AccountID)
-	ig.Lock.RUnlock()
+	igResponseInterface, err := ig.doRequest(req, 2, WorkingOrders{})
+	igResponse, _ := igResponseInterface.(*WorkingOrders)
 
-	client := &http.Client{
-		Timeout: ig.Timeout,
-	}
-	resp, err := client.Do(req)
-	if err != nil {
-		return orders, fmt.Errorf("igmarkets: unable to send HTTP request: %v", err)
-	}
-	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return orders, fmt.Errorf("igmarkets: unable to read HTTP body: %v", err)
-	}
-	if resp.StatusCode != http.StatusOK {
-		return orders, fmt.Errorf("igmarkets: unexpected HTTP status code: %d", resp.StatusCode)
-	}
-	type WorkingOrders struct {
-		WorkingOrders []OTCWorkingOrder `json:"workingOrders"`
-	}
-	wo := WorkingOrders{}
-	if err := json.Unmarshal(body, &wo); err != nil {
-		return orders, fmt.Errorf("igmarkets: unable to unmarshal JSON response: %v", err)
-	}
-
-	return wo.WorkingOrders, nil
+	return igResponse, err
 }
 
 // DeleteOTCWorkingOrder - Delete workingorder
@@ -985,114 +672,79 @@ func (ig *IGMarkets) DeleteOTCWorkingOrder(dealRef string) error {
 		return fmt.Errorf("igmarkets: unable to create HTTP request: %v", err)
 	}
 
-	ig.Lock.RLock()
-	req.Header.Set("Accept", "application/json; charset=UTF-8")
-	req.Header.Set("Content-Type", "application/json; charset=UTF-8")
-	req.Header.Set("VERSION", "2")
-	req.Header.Set("X-IG-API-KEY", ig.APIKey)
-	req.Header.Set("Authorization", "Bearer "+ig.OAuthToken.AccessToken)
-	req.Header.Set("IG-ACCOUNT-ID", ig.AccountID)
-	ig.Lock.RUnlock()
+	_, err = ig.doRequest(req, 2, nil)
 
-	client := &http.Client{
-		Timeout: ig.Timeout,
-	}
-	resp, err := client.Do(req)
-	if err != nil {
-		return fmt.Errorf("igmarkets: unable to send HTTP request: %v", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("igmarkets: unexpected HTTP status code: %d", resp.StatusCode)
-	}
-
-	return nil
+	return err
 }
 
 // GetWatchlist - Get watchlist from API
-func (ig *IGMarkets) GetWatchlist(watchListID string) (Watchlist, error) {
-	watchlist := Watchlist{}
+func (ig *IGMarkets) GetWatchlist(watchListID string) (*Watchlist, error) {
 	bodyReq := new(bytes.Buffer)
 
 	req, err := http.NewRequest("GET", ig.APIURL+"/gateway/deal/watchlists/"+watchListID, bodyReq)
 	if err != nil {
-		return watchlist, fmt.Errorf("igmarkets: unable to create HTTP request: %v", err)
+		return &Watchlist{}, fmt.Errorf("igmarkets: unable to create HTTP request: %v", err)
 	}
 
-	ig.Lock.RLock()
-	req.Header.Set("Accept", "application/json; charset=UTF-8")
-	req.Header.Set("Content-Type", "application/json; charset=UTF-8")
-	req.Header.Set("VERSION", "1")
-	req.Header.Set("X-IG-API-KEY", ig.APIKey)
-	req.Header.Set("Authorization", "Bearer "+ig.OAuthToken.AccessToken)
-	req.Header.Set("IG-ACCOUNT-ID", ig.AccountID)
-	ig.Lock.RUnlock()
+	igResponseInterface, err := ig.doRequest(req, 1, Watchlist{})
+	igResponse, _ := igResponseInterface.(*Watchlist)
 
-	client := &http.Client{
-		Timeout: ig.Timeout,
-	}
-	resp, err := client.Do(req)
-	if err != nil {
-		return watchlist, fmt.Errorf("igmarkets: unable to send HTTP request: %v", err)
-	}
-	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return watchlist, fmt.Errorf("igmarkets: unable to read HTTP body: %v", err)
-	}
-	if resp.StatusCode != http.StatusOK {
-		return watchlist, fmt.Errorf("igmarkets: unexpected HTTP status code: %d", resp.StatusCode)
-	}
-	err = json.Unmarshal(body, &watchlist)
-	if err != nil {
-		return watchlist, fmt.Errorf("igmarkets: unable to unmarshal JSON response: %v", err)
-	}
-
-	return watchlist, nil
+	return igResponse, err
 }
 
 // GetMarkets - Return markets information for given epic
-func (ig *IGMarkets) GetMarkets(epic string) (MarketsResponse, error) {
+func (ig *IGMarkets) GetMarkets(epic string) (*MarketsResponse, error) {
 	bodyReq := new(bytes.Buffer)
-	marketsResponse := MarketsResponse{}
 
 	req, err := http.NewRequest("GET", fmt.Sprintf("%s/gateway/deal/markets/%s",
 		ig.APIURL, epic), bodyReq)
 	if err != nil {
-		return marketsResponse, fmt.Errorf("igmarkets: unable to get markets data: %v", err)
+		return &MarketsResponse{}, fmt.Errorf("igmarkets: unable to get markets data: %v", err)
 	}
 
+	igResponseInterface, err := ig.doRequest(req, 3, MarketsResponse{})
+	igResponse, _ := igResponseInterface.(*MarketsResponse)
+
+	return igResponse, err
+}
+
+func (ig *IGMarkets) doRequest(req *http.Request, endpointVersion int, igResponse interface{}) (interface{}, error) {
 	ig.Lock.RLock()
-	req.Header.Set("Accept", "application/json; charset=UTF-8")
-	req.Header.Set("Content-Type", "application/json; charset=UTF-8")
-	req.Header.Set("VERSION", "3")
 	req.Header.Set("X-IG-API-KEY", ig.APIKey)
 	req.Header.Set("Authorization", "Bearer "+ig.OAuthToken.AccessToken)
 	req.Header.Set("IG-ACCOUNT-ID", ig.AccountID)
 	ig.Lock.RUnlock()
+
+	req.Header.Set("Accept", "application/json; charset=UTF-8")
+	req.Header.Set("Content-Type", "application/json; charset=UTF-8")
+	req.Header.Set("VERSION", fmt.Sprintf("%d", endpointVersion))
 
 	client := &http.Client{
 		Timeout: ig.Timeout,
 	}
 	resp, err := client.Do(req)
 	if err != nil {
-		return marketsResponse, fmt.Errorf("igmarkets: unable to get markets data: %v", err)
+		return igResponse, fmt.Errorf("igmarkets: unable to get markets data: %v", err)
 	}
 	defer resp.Body.Close()
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return marketsResponse,
-			fmt.Errorf("igmarkets: unable to get body of transactions markets data: %v", err)
+		return igResponse, fmt.Errorf("igmarkets: unable to get body of transactions markets data: %v", err)
 	}
 	if resp.StatusCode != http.StatusOK {
-		return marketsResponse,
-			fmt.Errorf("igmarkets: unexpected HTTP status code: %d", resp.StatusCode)
-	}
-	if err := json.Unmarshal(body, &marketsResponse); err != nil {
-		return marketsResponse, fmt.Errorf("igmarkets: unable to unmarshal JSON response: %v", err)
+		return igResponse, fmt.Errorf("igmarkets: unexpected HTTP status code: %d", resp.StatusCode)
 	}
 
-	return marketsResponse, nil
+	objType := reflect.TypeOf(igResponse)
+	obj := reflect.New(objType).Interface()
+	if obj != nil {
+		if err := json.Unmarshal(body, &obj); err != nil {
+			return obj, fmt.Errorf("igmarkets: unable to unmarshal JSON response: %v", err)
+		}
+
+		return obj, nil
+	}
+
+	return igResponse, nil
 }
