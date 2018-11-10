@@ -431,6 +431,9 @@ func (ig *IGMarkets) RefreshToken() error {
 	}
 
 	igResponseInterface, err := ig.doRequest(req, 1, OAuthToken{})
+	if err != nil {
+		return err
+	}
 	oauthToken, _ := igResponseInterface.(*OAuthToken)
 
 	if oauthToken.AccessToken == "" {
@@ -473,6 +476,9 @@ func (ig *IGMarkets) Login() error {
 	}
 
 	igResponseInterface, err := ig.doRequest(req, 3, authResponse{})
+	if err != nil {
+		return err
+	}
 	authResponse, _ := igResponseInterface.(*authResponse)
 
 	if authResponse.OAuthToken.AccessToken == "" {
