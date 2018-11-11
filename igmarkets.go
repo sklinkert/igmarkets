@@ -386,8 +386,8 @@ type IGMarkets struct {
 	Identifier string
 	Password   string
 	OAuthToken OAuthToken
-	Lock       sync.RWMutex
 	httpClient *http.Client
+	sync.RWMutex
 }
 
 // New - Create new instance of igmarkets
@@ -450,9 +450,9 @@ func (ig *IGMarkets) RefreshToken() error {
 		return fmt.Errorf("igmarkets: token expiry is too short for periodically renewals")
 	}
 
-	ig.Lock.Lock()
+	ig.Lock()
 	ig.OAuthToken = *oauthToken
-	ig.Lock.Unlock()
+	ig.Unlock()
 
 	return nil
 }
@@ -495,9 +495,9 @@ func (ig *IGMarkets) Login() error {
 		return fmt.Errorf("igmarkets: token expiry is too short for periodically renewals")
 	}
 
-	ig.Lock.Lock()
+	ig.Lock()
 	ig.OAuthToken = authResponse.OAuthToken
-	ig.Lock.Unlock()
+	ig.Unlock()
 
 	return nil
 }
@@ -722,11 +722,11 @@ func (ig *IGMarkets) GetMarkets(epic string) (*MarketsResponse, error) {
 }
 
 func (ig *IGMarkets) doRequest(req *http.Request, endpointVersion int, igResponse interface{}) (interface{}, error) {
-	ig.Lock.RLock()
+	ig.RLock()
 	req.Header.Set("X-IG-API-KEY", ig.APIKey)
 	req.Header.Set("Authorization", "Bearer "+ig.OAuthToken.AccessToken)
 	req.Header.Set("IG-ACCOUNT-ID", ig.AccountID)
-	ig.Lock.RUnlock()
+	ig.RUnlock()
 
 	req.Header.Set("Accept", "application/json; charset=UTF-8")
 	req.Header.Set("Content-Type", "application/json; charset=UTF-8")
