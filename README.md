@@ -100,6 +100,22 @@ func main() {
         fmt.Println("Status", confirmation.Status) // "OPEN"
         fmt.Println("Reason", confirmation.Reason)
         fmt.Println("Level", confirmation.Level) // Buy price
+
+        // List transactions
+        transactionResponse, err := ig.GetTransactions("ALL", time.Now().AddDate(0, 0, -30).UTC()) // last 30 days
+        if err != nil {
+                fmt.Println("Unable to get transactions: ", err)
+        }
+        for _, transaction := range transactionResponse.Transactions {
+                fmt.Println("Found new transaction")
+                fmt.Println("Epic:", transaction.InstrumentName)
+                fmt.Println("Type:", transaction.TransactionType)
+                fmt.Println("OpenDate:", transaction.OpenDateUtc)
+                fmt.Println("CloseDate:", transaction.DateUTC)
+                fmt.Println("OpenLevel:", transaction.OpenLevel)
+                fmt.Println("CloseLevel:", transaction.CloseLevel)
+                fmt.Println("Profit/Loss:", transaction.ProfitAndLoss)
+	}
 }
 ```
 
