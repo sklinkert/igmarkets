@@ -512,7 +512,7 @@ func (ig *IGMarkets) GetTransactions(transactionType string, from time.Time) (*H
 	bodyReq := new(bytes.Buffer)
 	fromStr := from.Format("2006-01-02T15:04:05")
 
-	req, err := http.NewRequest("GET", fmt.Sprintf("%s/gateway/deal/history/transactions?from=%s&type=%s",
+	req, err := http.NewRequest("GET", fmt.Sprintf("%s/gateway/deal/history/transactions?from=%s&type=%s&pageSize=0",
 		ig.APIURL, fromStr, transactionType), bodyReq)
 	if err != nil {
 		return &HistoryTransactionResponse{}, fmt.Errorf("igmarkets: unable to get transactions: %v", err)
