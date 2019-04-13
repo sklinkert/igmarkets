@@ -726,14 +726,16 @@ func (ig *IGMarkets) doRequest(req *http.Request, endpointVersion int, igRespons
 		return igResponse, fmt.Errorf("igmarkets: unexpected HTTP status code: %d", resp.StatusCode)
 	}
 
-	objType := reflect.TypeOf(igResponse)
-	obj := reflect.New(objType).Interface()
-	if obj != nil {
-		if err := json.Unmarshal(body, &obj); err != nil {
-			return obj, fmt.Errorf("igmarkets: unable to unmarshal JSON response: %v", err)
-		}
+	if igResponse != nil {
+		objType := reflect.TypeOf(igResponse)
+		obj := reflect.New(objType).Interface()
+		if obj != nil {
+			if err := json.Unmarshal(body, &obj); err != nil {
+				return obj, fmt.Errorf("igmarkets: unable to unmarshal JSON response: %v", err)
+			}
 
-		return obj, nil
+			return obj, nil
+		}
 	}
 
 	return igResponse, nil
