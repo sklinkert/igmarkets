@@ -87,11 +87,6 @@ type OTCWorkingOrder struct {
 	WorkingOrderData WorkingOrderData `json:"workingOrderData"`
 }
 
-// Watchlist - Response from Watchlist endpoint
-type Watchlist struct {
-	Markets []MarketData `json:"markets"`
-}
-
 // MarketData - Subset of OTCWorkingOrder
 type MarketData struct {
 	Bid                      float64 `json:"bid"`
@@ -688,21 +683,6 @@ func (ig *IGMarkets) DeleteOTCWorkingOrder(dealRef string) error {
 	_, err = ig.doRequest(req, 2, nil)
 
 	return err
-}
-
-// GetWatchlist - Get watchlist from API
-func (ig *IGMarkets) GetWatchlist(watchListID string) (*Watchlist, error) {
-	bodyReq := new(bytes.Buffer)
-
-	req, err := http.NewRequest("GET", ig.APIURL+"/gateway/deal/watchlists/"+watchListID, bodyReq)
-	if err != nil {
-		return &Watchlist{}, fmt.Errorf("igmarkets: unable to create HTTP request: %v", err)
-	}
-
-	igResponseInterface, err := ig.doRequest(req, 1, Watchlist{})
-	igResponse, _ := igResponseInterface.(*Watchlist)
-
-	return igResponse, err
 }
 
 // GetMarkets - Return markets information for given epic

@@ -34,7 +34,13 @@ Reference: https://labs.ig.com/rest-trading-api-reference
 - GET /prices/{epic}/{resolution}/{startDate}/{endDate}
 
 ### Watchlists
+- POST /watchlists/ (Create watchlist)
 - GET /watchlists/{watchlistid}
+- DELETE /watchlists/{watchlistid} (Delete watchlist)
+
+- GET /watchlists (Get all watchlists)
+- PUT /watchlists/{watchlistid} (Add epic)
+- DELETE /watchlists/{watchlistid}/{epic} (Delete epic)
 
 ### History
 
