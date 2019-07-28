@@ -122,6 +122,10 @@ func main() {
                 fmt.Println("CloseLevel:", transaction.CloseLevel)
                 fmt.Println("Profit/Loss:", transaction.ProfitAndLoss)
 	}
+
+        // Example of getting client sentiment
+        sentiment, _ := ig.GetClientSentiment("F-US") //Ford
+        fmt.Println("Sentiment example:", sentiment)
 }
 ```
 
