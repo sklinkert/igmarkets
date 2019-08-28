@@ -109,6 +109,11 @@ type MarketData struct {
 	UpdateTimeUTC            string  `json:"updateTimeUTC"`
 }
 
+// MarketSearchResponse - Contains the response data for MarketSearch()
+type MarketSearchResponse struct {
+	Markets []MarketData `json:"markets"`
+}
+
 // WorkingOrderData - Subset of OTCWorkingOrder
 type WorkingOrderData struct {
 	CreatedDate     string  `json:"createdDate"`
@@ -697,6 +702,23 @@ func (ig *IGMarkets) GetMarkets(epic string) (*MarketsResponse, error) {
 
 	igResponseInterface, err := ig.doRequest(req, 3, MarketsResponse{})
 	igResponse, _ := igResponseInterface.(*MarketsResponse)
+
+	return igResponse, err
+}
+
+// MarketSearch - Search for ISIN or share names to get the epic.
+func (ig *IGMarkets) MarketSearch(term string) (*MarketSearchResponse, error) {
+	bodyReq := new(bytes.Buffer)
+
+	// E.g. https://demo-api.ig.com/gateway/deal/markets?searchTerm=DE0005008007
+	url := fmt.Sprintf("%s/gateway/deal/markets?searchTerm=%s", ig.APIURL, term)
+	req, err := http.NewRequest("GET", url, bodyReq)
+	if err != nil {
+		return &MarketSearchResponse{}, fmt.Errorf("igmarkets: unable to get markets data: %v", err)
+	}
+
+	igResponseInterface, err := ig.doRequest(req, 1, MarketSearchResponse{})
+	igResponse, _ := igResponseInterface.(*MarketSearchResponse)
 
 	return igResponse, err
 }
