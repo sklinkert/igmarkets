@@ -15,6 +15,7 @@ Reference: https://labs.ig.com/rest-trading-api-reference
 ### Markets
 
 - GET /markets/{epic}
+- GET /markets?searchTerm=...
 
 ### Positions
 
