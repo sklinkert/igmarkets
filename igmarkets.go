@@ -296,7 +296,7 @@ type Snapshot struct {
 	ControlledRiskExtraSpread float64 `json:"controlledRiskExtraSpread"`
 }
 
-// MarketsResponse - Marekt response for /markets/{epic}
+// MarketsResponse - Market response for /markets/{epic}
 type MarketsResponse struct {
 	DealingRules DealingRules `json:"dealingRules"`
 	Instrument   Instrument   `json:"instrument"`
@@ -350,6 +350,12 @@ type Price struct {
 	Bid        float64 `json:"bid"`
 	Ask        float64 `json:"ask"`
 	LastTraded float64 `json:"lastTraded"` // Last traded price
+}
+
+// ClientSentimentResponse - Response for client sentiment
+type ClientSentimentResponse struct {
+	LongPositionPercentage  float64 `json:"longPositionPercentage"`
+	ShortPositionPercentage float64 `json:"shortPositionPercentage"`
 }
 
 const (
@@ -706,6 +712,21 @@ func (ig *IGMarkets) GetMarkets(epic string) (*MarketsResponse, error) {
 	igResponse, _ := igResponseInterface.(*MarketsResponse)
 
 	return igResponse, err
+}
+
+
+// GetClientSentiment - Get the client sentiment for the given instrument's market
+func (ig *IGMarkets) GetClientSentiment(MarketID string) (*ClientSentimentResponse, error) {
+	bodyReq := new(bytes.Buffer)
+
+	req, err := http.NewRequest("GET", ig.APIURL+"/gateway/deal/clientsentiment/"+MarketID, bodyReq)
+	if err != nil {
+		return &ClientSentimentResponse{}, fmt.Errorf("igmarkets: unable to create HTTP request for GetClientSentiment: %v", err)
+	}
+
+	igResponseInterface, err := ig.doRequest(req, 1, ClientSentimentResponse{})
+	igResponse, _ := igResponseInterface.(*ClientSentimentResponse)
+  return igResponse, err
 }
 
 // MarketSearch - Search for ISIN or share names to get the epic.
