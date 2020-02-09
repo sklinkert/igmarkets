@@ -17,6 +17,10 @@ Reference: https://labs.ig.com/rest-trading-api-reference
 - GET /markets/{epic}
 - GET /markets?searchTerm=...
 
+### Client sentiment
+
+- GET /clientsentiment/{marketID}
+
 ### Positions
 
 - POST /positions/otc
