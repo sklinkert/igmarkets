@@ -534,17 +534,22 @@ func (ig *IGMarkets) GetTransactions(transactionType string, from time.Time) (*H
 func (ig *IGMarkets) GetPriceHistory(epic, resolution string, max int, from, to time.Time) (*PriceResponse, error) {
 	bodyReq := new(bytes.Buffer)
 
+	fmt.Println(from, to)
+
 	limitStr := ""
 	if !to.IsZero() && !from.IsZero() {
 		fromStr := from.Format("2006-01-02T15:04:05")
 		toStr := to.Format("2006-01-02T15:04:05")
 		limitStr = fmt.Sprintf("&from=%s&to=%s", fromStr, toStr)
-	} else if max > 0 {
+	}
+	if max > 0 {
 		limitStr = fmt.Sprintf("&max=%d", max)
 	}
 
-	page := "&max=100&pageSize=100"
-	
+	page := "&pageSize=1000"
+
+	fmt.Println(limitStr)
+
 	req, err := http.NewRequest("GET", fmt.Sprintf("%s/gateway/deal/prices/%s?resolution=%s",
 		ig.APIURL, epic, resolution)+limitStr+page, bodyReq)
 	if err != nil {
