@@ -540,6 +540,8 @@ func (ig *IGMarkets) GetPriceHistory(epic, resolution string, max int, from, to 
 
 	page := "&pageSize=100"
 
+	fmt.Println(limitStr)
+
 	req, err := http.NewRequest("GET", fmt.Sprintf("%s/gateway/deal/prices/%s?resolution=%s",
 		ig.APIURL, epic, resolution)+limitStr+page, bodyReq)
 	if err != nil {
