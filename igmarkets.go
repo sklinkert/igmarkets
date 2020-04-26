@@ -538,7 +538,7 @@ func (ig *IGMarkets) GetPriceHistory(epic, resolution string, max int, from, to 
 		limitStr = fmt.Sprintf("&max=%d", max)
 	}
 
-	page := "&pageSize=100"
+	page := "&pageSize=1000"
 
 	fmt.Println(limitStr)
 
