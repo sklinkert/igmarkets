@@ -528,6 +528,8 @@ func (ig *IGMarkets) GetTransactions(transactionType string, from time.Time) (*H
 func (ig *IGMarkets) GetPriceHistory(epic, resolution string, max int, from, to time.Time) (*PriceResponse, error) {
 	bodyReq := new(bytes.Buffer)
 
+	fmt.Println(from, to)
+
 	limitStr := ""
 	if !to.IsZero() && !from.IsZero() {
 		fromStr := from.Format("2006-01-02T15:04:05")
