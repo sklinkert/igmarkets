@@ -558,56 +558,50 @@ func (ig *IGMarkets) GetPriceHistory(epic, resolution string, max int, from, to 
 }
 
 // PlaceOTCOrder - Place an OTC order
-func (ig *IGMarkets) PlaceOTCOrder(order OTCOrderRequest) (string, error) {
+func (ig *IGMarkets) PlaceOTCOrder(order OTCOrderRequest) (*DealReference, error) {
 	bodyReq, err := json.Marshal(&order)
 	if err != nil {
-		return "", fmt.Errorf("igmarkets: cannot marshal: %v", err)
+		return nil, fmt.Errorf("igmarkets: cannot marshal: %v", err)
 	}
 	req, err := http.NewRequest("POST", ig.APIURL+"/gateway/deal/positions/otc", bytes.NewReader(bodyReq))
 	if err != nil {
-		return "", fmt.Errorf("igmarkets: cannot create HTTP request: %v", err)
+		return nil, fmt.Errorf("igmarkets: cannot create HTTP request: %v", err)
 	}
 
 	igResponseInterface, err := ig.doRequest(req, 2, DealReference{})
-	igResponse, _ := igResponseInterface.(*DealReference)
-
-	return igResponse.DealReference, err
+	return igResponseInterface.(*DealReference), err
 }
 
 // UpdateOTCOrder - Update an exisiting OTC order
-func (ig *IGMarkets) UpdateOTCOrder(dealID string, order OTCUpdateOrderRequest) (string, error) {
+func (ig *IGMarkets) UpdateOTCOrder(dealID string, order OTCUpdateOrderRequest) (*DealReference, error) {
 	bodyReq, err := json.Marshal(&order)
 	if err != nil {
-		return "", fmt.Errorf("igmarkets: cannot marshal: %v", err)
+		return nil, fmt.Errorf("igmarkets: cannot marshal: %v", err)
 	}
 	req, err := http.NewRequest("PUT", ig.APIURL+"/gateway/deal/positions/otc/"+dealID, bytes.NewReader(bodyReq))
 	if err != nil {
-		return "", fmt.Errorf("igmarkets: cannot create HTTP request: %v", err)
+		return nil, fmt.Errorf("igmarkets: cannot create HTTP request: %v", err)
 	}
 
 	igResponseInterface, err := ig.doRequest(req, 2, DealReference{})
-	igResponse, _ := igResponseInterface.(*DealReference)
-
-	return igResponse.DealReference, err
+	return igResponseInterface.(*DealReference), err
 }
 
 // CloseOTCPosition - Close an OTC position
-func (ig *IGMarkets) CloseOTCPosition(close OTCPositionCloseRequest) (string, error) {
+func (ig *IGMarkets) CloseOTCPosition(close OTCPositionCloseRequest) (*DealReference, error) {
 	bodyReq, err := json.Marshal(&close)
 	if err != nil {
-		return "", fmt.Errorf("igmarkets: cannot marshal: %v", err)
+		return nil, fmt.Errorf("igmarkets: cannot marshal: %v", err)
 	}
 	req, err := http.NewRequest("POST", ig.APIURL+"/gateway/deal/positions/otc", bytes.NewReader(bodyReq))
 	if err != nil {
-		return "", fmt.Errorf("igmarkets: cannot create HTTP request: %v", err)
+		return nil, fmt.Errorf("igmarkets: cannot create HTTP request: %v", err)
 	}
 
 	req.Header.Set("_method", "DELETE")
 
 	igResponseInterface, err := ig.doRequest(req, 1, DealReference{})
-	igResponse, _ := igResponseInterface.(*DealReference)
-
-	return igResponse.DealReference, err
+	return igResponseInterface.(*DealReference), err
 }
 
 // GetDealConfirmation - Check if the given order was closed/filled
@@ -654,20 +648,18 @@ func (ig *IGMarkets) DeletePositionsOTC() error {
 }
 
 // PlaceOTCWorkingOrder - Place an OTC workingorder
-func (ig *IGMarkets) PlaceOTCWorkingOrder(order OTCWorkingOrderRequest) (string, error) {
+func (ig *IGMarkets) PlaceOTCWorkingOrder(order OTCWorkingOrderRequest) (*DealReference, error) {
 	bodyReq, err := json.Marshal(&order)
 	if err != nil {
-		return "", fmt.Errorf("igmarkets: unable to marshal JSON: %v", err)
+		return nil, fmt.Errorf("igmarkets: unable to marshal JSON: %v", err)
 	}
 	req, err := http.NewRequest("POST", ig.APIURL+"/gateway/deal/workingorders/otc", bytes.NewReader(bodyReq))
 	if err != nil {
-		return "", fmt.Errorf("igmarkets: unable to create HTTP request: %v", err)
+		return nil, fmt.Errorf("igmarkets: unable to create HTTP request: %v", err)
 	}
 
 	igResponseInterface, err := ig.doRequest(req, 2, DealReference{})
-	igResponse, _ := igResponseInterface.(*DealReference)
-
-	return igResponse.DealReference, err
+	return igResponseInterface.(*DealReference), err
 }
 
 // GetOTCWorkingOrders - Get all working orders
