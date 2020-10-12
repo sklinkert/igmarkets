@@ -793,7 +793,7 @@ func (ig *IGMarkets) doRequest(req *http.Request, endpointVersion int, igRespons
 		return igResponse, fmt.Errorf("igmarkets: unable to get body of transactions markets data: %v", err)
 	}
 	if resp.StatusCode != http.StatusOK {
-		return igResponse, fmt.Errorf("igmarkets: unexpected HTTP status code: %d", resp.StatusCode)
+		return igResponse, fmt.Errorf("igmarkets: unexpected HTTP status code: %d (body=%q)", resp.StatusCode, body)
 	}
 
 	if igResponse != nil {
