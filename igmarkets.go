@@ -521,10 +521,13 @@ func (ig *IGMarkets) GetTransactions(transactionType string, from time.Time) (*H
 	req, err := http.NewRequest("GET", fmt.Sprintf("%s/gateway/deal/history/transactions?from=%s&type=%s&pageSize=0",
 		ig.APIURL, fromStr, transactionType), bodyReq)
 	if err != nil {
-		return &HistoryTransactionResponse{}, fmt.Errorf("igmarkets: unable to get transactions: %v", err)
+		return nil, fmt.Errorf("igmarkets: unable to get transactions: %v", err)
 	}
 
 	igResponseInterface, err := ig.doRequest(req, 2, HistoryTransactionResponse{})
+	if err != nil {
+		return nil, err
+	}
 	igResponse, _ := igResponseInterface.(*HistoryTransactionResponse)
 
 	return igResponse, err
@@ -548,10 +551,13 @@ func (ig *IGMarkets) GetPriceHistory(epic, resolution string, max int, from, to 
 	req, err := http.NewRequest("GET", fmt.Sprintf("%s/gateway/deal/prices/%s?resolution=%s",
 		ig.APIURL, epic, resolution)+limitStr+page, bodyReq)
 	if err != nil {
-		return &PriceResponse{}, fmt.Errorf("igmarkets: unable to get price: %v", err)
+		return nil, fmt.Errorf("igmarkets: unable to get price: %v", err)
 	}
 
 	igResponseInterface, err := ig.doRequest(req, 3, PriceResponse{})
+	if err != nil {
+		return nil, err
+	}
 	igResponse, _ := igResponseInterface.(*PriceResponse)
 
 	return igResponse, err
@@ -569,7 +575,10 @@ func (ig *IGMarkets) PlaceOTCOrder(order OTCOrderRequest) (*DealReference, error
 	}
 
 	igResponseInterface, err := ig.doRequest(req, 2, DealReference{})
-	return igResponseInterface.(*DealReference), err
+	if err != nil {
+		return nil, err
+	}
+	return igResponseInterface.(*DealReference), nil
 }
 
 // UpdateOTCOrder - Update an exisiting OTC order
@@ -584,6 +593,9 @@ func (ig *IGMarkets) UpdateOTCOrder(dealID string, order OTCUpdateOrderRequest) 
 	}
 
 	igResponseInterface, err := ig.doRequest(req, 2, DealReference{})
+	if err != nil {
+		return nil, err
+	}
 	return igResponseInterface.(*DealReference), err
 }
 
@@ -601,7 +613,10 @@ func (ig *IGMarkets) CloseOTCPosition(close OTCPositionCloseRequest) (*DealRefer
 	req.Header.Set("_method", "DELETE")
 
 	igResponseInterface, err := ig.doRequest(req, 1, DealReference{})
-	return igResponseInterface.(*DealReference), err
+	if err != nil {
+		return nil, err
+	}
+	return igResponseInterface.(*DealReference), nil
 }
 
 // GetDealConfirmation - Check if the given order was closed/filled
@@ -610,13 +625,16 @@ func (ig *IGMarkets) GetDealConfirmation(dealRef string) (*OTCDealConfirmation, 
 
 	req, err := http.NewRequest("GET", ig.APIURL+"/gateway/deal/confirms/"+dealRef, bodyReq)
 	if err != nil {
-		return &OTCDealConfirmation{}, fmt.Errorf("igmarkets: unable to create HTTP request: %v", err)
+		return nil, fmt.Errorf("igmarkets: unable to create HTTP request: %v", err)
 	}
 
 	igResponseInterface, err := ig.doRequest(req, 1, OTCDealConfirmation{})
+	if err != nil {
+		return nil, err
+	}
 	igResponse, _ := igResponseInterface.(*OTCDealConfirmation)
 
-	return igResponse, err
+	return igResponse, nil
 }
 
 // GetPositions - Get all open positions
@@ -625,13 +643,16 @@ func (ig *IGMarkets) GetPositions() (*PositionsResponse, error) {
 
 	req, err := http.NewRequest("GET", ig.APIURL+"/gateway/deal/positions/", bodyReq)
 	if err != nil {
-		return &PositionsResponse{}, fmt.Errorf("igmarkets: unable to create HTTP request: %v", err)
+		return nil, fmt.Errorf("igmarkets: unable to create HTTP request: %v", err)
 	}
 
 	igResponseInterface, err := ig.doRequest(req, 2, PositionsResponse{})
-	igResponse, _ := igResponseInterface.(*PositionsResponse)
+	if err != nil {
+		return nil, err
+	}
 
-	return igResponse, err
+	igResponse, _ := igResponseInterface.(*PositionsResponse)
+	return igResponse, nil
 }
 
 // DeletePositionsOTC - Closes one or more OTC positions
@@ -659,6 +680,9 @@ func (ig *IGMarkets) PlaceOTCWorkingOrder(order OTCWorkingOrderRequest) (*DealRe
 	}
 
 	igResponseInterface, err := ig.doRequest(req, 2, DealReference{})
+	if err != nil {
+		return nil, err
+	}
 	return igResponseInterface.(*DealReference), err
 }
 
@@ -667,10 +691,13 @@ func (ig *IGMarkets) GetOTCWorkingOrders() (*WorkingOrders, error) {
 	bodyReq := new(bytes.Buffer)
 	req, err := http.NewRequest("GET", ig.APIURL+"/gateway/deal/workingorders/", bodyReq)
 	if err != nil {
-		return &WorkingOrders{}, fmt.Errorf("igmarkets: unable to create HTTP request: %v", err)
+		return nil, fmt.Errorf("igmarkets: unable to create HTTP request: %v", err)
 	}
 
 	igResponseInterface, err := ig.doRequest(req, 2, WorkingOrders{})
+	if err != nil {
+		return nil, err
+	}
 	igResponse, _ := igResponseInterface.(*WorkingOrders)
 
 	return igResponse, err
@@ -697,10 +724,13 @@ func (ig *IGMarkets) GetMarkets(epic string) (*MarketsResponse, error) {
 	req, err := http.NewRequest("GET", fmt.Sprintf("%s/gateway/deal/markets/%s",
 		ig.APIURL, epic), bodyReq)
 	if err != nil {
-		return &MarketsResponse{}, fmt.Errorf("igmarkets: unable to get markets data: %v", err)
+		return nil, fmt.Errorf("igmarkets: unable to get markets data: %v", err)
 	}
 
 	igResponseInterface, err := ig.doRequest(req, 3, MarketsResponse{})
+	if err != nil {
+		return nil, err
+	}
 	igResponse, _ := igResponseInterface.(*MarketsResponse)
 
 	return igResponse, err
@@ -713,7 +743,7 @@ func (ig *IGMarkets) GetClientSentiment(MarketID string) (*ClientSentimentRespon
 
 	req, err := http.NewRequest("GET", ig.APIURL+"/gateway/deal/clientsentiment/"+MarketID, bodyReq)
 	if err != nil {
-		return &ClientSentimentResponse{}, fmt.Errorf("igmarkets: unable to create HTTP request for GetClientSentiment: %v", err)
+		return nil, fmt.Errorf("igmarkets: unable to create HTTP request for GetClientSentiment: %v", err)
 	}
 
 	igResponseInterface, err := ig.doRequest(req, 1, ClientSentimentResponse{})
@@ -729,10 +759,13 @@ func (ig *IGMarkets) MarketSearch(term string) (*MarketSearchResponse, error) {
 	url := fmt.Sprintf("%s/gateway/deal/markets?searchTerm=%s", ig.APIURL, term)
 	req, err := http.NewRequest("GET", url, bodyReq)
 	if err != nil {
-		return &MarketSearchResponse{}, fmt.Errorf("igmarkets: unable to get markets data: %v", err)
+		return nil, fmt.Errorf("igmarkets: unable to get markets data: %v", err)
 	}
 
 	igResponseInterface, err := ig.doRequest(req, 1, MarketSearchResponse{})
+	if err != nil {
+		return nil, err
+	}
 	igResponse, _ := igResponseInterface.(*MarketSearchResponse)
 
 	return igResponse, err
