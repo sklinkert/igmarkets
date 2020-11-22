@@ -785,7 +785,11 @@ func (ig *IGMarkets) doRequest(req *http.Request, endpointVersion int, igRespons
 	if err != nil {
 		return igResponse, fmt.Errorf("igmarkets: unable to get markets data: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			fmt.Printf("igmarkets.doRequest:  resp.Body.Close() failed: %v", err)
+		}
+	}()
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
