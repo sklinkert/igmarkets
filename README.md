@@ -8,9 +8,13 @@ Reference: https://labs.ig.com/rest-trading-api-reference
 
 ## Currently supported endpoints
 
+### Lightstreamer
+
+- Create session, add subscription(control), bind session
+
 ### Session
 
-- POST /session
+- POST /session (version 2 + 3)
 
 ### Markets
 
@@ -133,6 +137,45 @@ func main() {
         fmt.Println("Sentiment example:", sentiment)
 }
 ```
+
+
+
+### LightStreamer API Subscription Example
+
+```go
+	for {
+		tickChan := make(chan igmarkets.LightStreamerTick)
+    err := igHandle.OpenLightStreamerSubscription([]string{"CS.D.BITCOIN.CFD.IP"}, tickChan)
+		if err != nil {
+      log.WithError(err).Error("OpenLightStreamerSubscription() failed")
+		}
+
+		for tick := range tickChan {
+			log.Infof("tick: %+v", tick)
+		}
+
+		log.Infof("Server closed stream, restarting...")
+  }
+```
+
+Output:
+
+```
+INFO[0003] tick: {Epic:CS.D.BITCOIN.CFD.IP Time:2020-11-22 14:14:15 +0000 UTC Bid:18230.35 Ask:18266.35} 
+INFO[0003] tick: {Epic:CS.D.BITCOIN.CFD.IP Time:2020-11-22 14:14:15 +0000 UTC Bid:18230.45 Ask:18266.45} 
+INFO[0003] tick: {Epic:CS.D.BITCOIN.CFD.IP Time:2020-11-22 14:14:16 +0000 UTC Bid:18231.14 Ask:18267.14} 
+INFO[0003] tick: {Epic:CS.D.BITCOIN.CFD.IP Time:2020-11-22 14:14:16 +0000 UTC Bid:18231.04 Ask:18267.04} 
+INFO[0004] tick: {Epic:CS.D.BITCOIN.CFD.IP Time:2020-11-22 14:14:16 +0000 UTC Bid:18231.53 Ask:18267.53} 
+INFO[0004] tick: {Epic:CS.D.BITCOIN.CFD.IP Time:2020-11-22 14:14:16 +0000 UTC Bid:18231.35 Ask:18267.35} 
+INFO[0004] tick: {Epic:CS.D.BITCOIN.CFD.IP Time:2020-11-22 14:14:17 +0000 UTC Bid:18230.64 Ask:18266.64} 
+INFO[0004] tick: {Epic:CS.D.BITCOIN.CFD.IP Time:2020-11-22 14:14:17 +0000 UTC Bid:18231.08 Ask:18267.08} 
+INFO[0005] tick: {Epic:CS.D.BITCOIN.CFD.IP Time:2020-11-22 14:14:17 +0000 UTC Bid:18231.36 Ask:18267.36} 
+INFO[0005] tick: {Epic:CS.D.BITCOIN.CFD.IP Time:2020-11-22 14:14:17 +0000 UTC Bid:18230.93 Ask:18266.93} 
+```
+
+
+
+
 
 ## TODOs
 

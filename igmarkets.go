@@ -312,13 +312,34 @@ type authRequest struct {
 	Password   string `json:"password"`
 }
 
-// session - IG auth response
+// session - IG auth response (OAuth only)
+// Version 3
 type session struct {
 	ClientID              string     `json:"clientId"`
 	AccountId             string     `json:"accountId"`
 	LightstreamerEndpoint string     `json:"lightstreamerEndpoint"`
 	OAuthToken            OAuthToken `json:"oauthToken"`
 	TimezoneOffset        int        `json:"timezoneOffset"` // In seconds
+}
+
+// SessionVersion2 - IG auth response
+// required for LightStreamer API
+type SessionVersion2 struct {
+	AccountType           string `json:"accountType"`      // "CFD"
+	CurrencyIsoCode       string `json:"currencyIsoCode"`  // "EUR"
+	CurrencySymbol        string `json:"currencySymbol"`   // "E"
+	CurrentAccountId      string `json:"currentAccountId"` // "ABDGS"
+	LightstreamerEndpoint string `json:"lightstreamerEndpoint"`
+	ClientID              string `json:"clientId"`
+	TimezoneOffset        int    `json:"timezoneOffset"` // In seconds
+	HasActiveDemoAccounts bool   `json:"hasActiveDemoAccounts"`
+	HasActiveLiveAccounts bool   `json:"hasActiveLiveAccounts"`
+	TrailingStopsEnabled  bool   `json:"trailingStopsEnabled"`
+	DealingEnabled        bool   `json:"dealingEnabled"`
+
+	// Extracted from HTTP Header
+	CSTToken string
+	XSTToken string
 }
 
 // OAuthToken - part of the session
@@ -771,6 +792,11 @@ func (ig *IGMarkets) MarketSearch(term string) (*MarketSearchResponse, error) {
 }
 
 func (ig *IGMarkets) doRequest(req *http.Request, endpointVersion int, igResponse interface{}) (interface{}, error) {
+	object, _, err := ig.doRequestWithResponseHeaders(req, endpointVersion, igResponse)
+	return object, err
+}
+
+func (ig *IGMarkets) doRequestWithResponseHeaders(req *http.Request, endpointVersion int, igResponse interface{}) (interface{}, http.Header, error) {
 	ig.RLock()
 	req.Header.Set("X-IG-API-KEY", ig.APIKey)
 	req.Header.Set("Authorization", "Bearer "+ig.OAuthToken.AccessToken)
@@ -783,7 +809,7 @@ func (ig *IGMarkets) doRequest(req *http.Request, endpointVersion int, igRespons
 
 	resp, err := ig.httpClient.Do(req)
 	if err != nil {
-		return igResponse, fmt.Errorf("igmarkets: unable to get markets data: %v", err)
+		return igResponse, nil, fmt.Errorf("igmarkets: unable to get markets data: %v", err)
 	}
 	defer func() {
 		if err := resp.Body.Close(); err != nil {
@@ -793,10 +819,10 @@ func (ig *IGMarkets) doRequest(req *http.Request, endpointVersion int, igRespons
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return igResponse, fmt.Errorf("igmarkets: unable to get body of transactions markets data: %v", err)
+		return igResponse, nil, fmt.Errorf("igmarkets: unable to get body of transactions markets data: %v", err)
 	}
 	if resp.StatusCode != http.StatusOK {
-		return igResponse, fmt.Errorf("igmarkets: unexpected HTTP status code: %d (body=%q)", resp.StatusCode, body)
+		return igResponse, nil, fmt.Errorf("igmarkets: unexpected HTTP status code: %d (body=%q)", resp.StatusCode, body)
 	}
 
 	if igResponse != nil {
@@ -804,12 +830,12 @@ func (ig *IGMarkets) doRequest(req *http.Request, endpointVersion int, igRespons
 		obj := reflect.New(objType).Interface()
 		if obj != nil {
 			if err := json.Unmarshal(body, &obj); err != nil {
-				return obj, fmt.Errorf("igmarkets: unable to unmarshal JSON response: %v", err)
+				return obj, nil, fmt.Errorf("igmarkets: unable to unmarshal JSON response: %v", err)
 			}
 
-			return obj, nil
+			return obj, resp.Header, nil
 		}
 	}
 
-	return igResponse, nil
+	return igResponse, resp.Header, nil
 }
