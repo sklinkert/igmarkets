@@ -312,16 +312,16 @@ type authRequest struct {
 	Password   string `json:"password"`
 }
 
-// authResponse - IG auth response
-type authResponse struct {
-	AccountID             string     `json:"accountId"`
+// session - IG auth response
+type session struct {
 	ClientID              string     `json:"clientId"`
+	AccountId             string     `json:"accountId"`
 	LightstreamerEndpoint string     `json:"lightstreamerEndpoint"`
 	OAuthToken            OAuthToken `json:"oauthToken"`
 	TimezoneOffset        int        `json:"timezoneOffset"` // In seconds
 }
 
-// OAuthToken - part of the authResponse
+// OAuthToken - part of the session
 type OAuthToken struct {
 	AccessToken  string `json:"access_token"`
 	ExpiresIn    string `json:"expires_in"`
@@ -481,17 +481,17 @@ func (ig *IGMarkets) Login() error {
 		return fmt.Errorf("igmarkets: unable to send HTTP request: %v", err)
 	}
 
-	igResponseInterface, err := ig.doRequest(req, 3, authResponse{})
+	igResponseInterface, err := ig.doRequest(req, 3, session{})
 	if err != nil {
 		return err
 	}
-	authResponse, _ := igResponseInterface.(*authResponse)
+	session, _ := igResponseInterface.(*session)
 
-	if authResponse.OAuthToken.AccessToken == "" {
+	if session.OAuthToken.AccessToken == "" {
 		return fmt.Errorf("igmarkets: got response but access token is empty")
 	}
 
-	expiry, err := strconv.ParseInt(authResponse.OAuthToken.ExpiresIn, 10, 32)
+	expiry, err := strconv.ParseInt(session.OAuthToken.ExpiresIn, 10, 32)
 	if err != nil {
 		return fmt.Errorf("igmarkets: unable to parse OAuthToken expiry field: %v", err)
 	}
@@ -502,7 +502,7 @@ func (ig *IGMarkets) Login() error {
 	}
 
 	ig.Lock()
-	ig.OAuthToken = authResponse.OAuthToken
+	ig.OAuthToken = session.OAuthToken
 	ig.Unlock()
 
 	return nil
@@ -547,7 +547,7 @@ func (ig *IGMarkets) GetPriceHistory(epic, resolution string, max int, from, to 
 	}
 
 	page := "&max=100&pageSize=100"
-	
+
 	req, err := http.NewRequest("GET", fmt.Sprintf("%s/gateway/deal/prices/%s?resolution=%s",
 		ig.APIURL, epic, resolution)+limitStr+page, bodyReq)
 	if err != nil {
@@ -736,7 +736,6 @@ func (ig *IGMarkets) GetMarkets(epic string) (*MarketsResponse, error) {
 	return igResponse, err
 }
 
-
 // GetClientSentiment - Get the client sentiment for the given instrument's market
 func (ig *IGMarkets) GetClientSentiment(MarketID string) (*ClientSentimentResponse, error) {
 	bodyReq := new(bytes.Buffer)
@@ -748,7 +747,7 @@ func (ig *IGMarkets) GetClientSentiment(MarketID string) (*ClientSentimentRespon
 
 	igResponseInterface, err := ig.doRequest(req, 1, ClientSentimentResponse{})
 	igResponse, _ := igResponseInterface.(*ClientSentimentResponse)
-  return igResponse, err
+	return igResponse, err
 }
 
 // MarketSearch - Search for ISIN or share names to get the epic.
