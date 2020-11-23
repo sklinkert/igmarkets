@@ -46,7 +46,11 @@ func (ig *IGMarkets) OpenLightStreamerSubscription(epics []string, tickReceiver 
 	url := fmt.Sprintf("%s/lightstreamer/create_session.txt", sessionVersion2.LightstreamerEndpoint)
 	resp, err := c.Post(url, contentType, bodyBuf)
 	if err != nil {
-		body, _ := ioutil.ReadAll(resp.Body)
+		body, err2 := ioutil.ReadAll(resp.Body)
+		if err2 != nil {
+			return fmt.Errorf("calling lightstreamer endpoint %s failed: %v; reading HTTP body also failed: %v",
+				url, err, err2)
+		}
 		return fmt.Errorf("calling lightstreamer endpoint %s failed: %v http.StatusCode:%d Body: %q",
 			url, err, resp.StatusCode, string(body))
 	}
@@ -71,7 +75,11 @@ func (ig *IGMarkets) OpenLightStreamerSubscription(epics []string, tickReceiver 
 	url = fmt.Sprintf("%s/lightstreamer/control.txt", sessionVersion2.LightstreamerEndpoint)
 	resp, err = c.Post(url, contentType, bodyBuf)
 	if err != nil {
-		body, _ := ioutil.ReadAll(resp.Body)
+		body, err2 := ioutil.ReadAll(resp.Body)
+		if err2 != nil {
+			return fmt.Errorf("calling lightstreamer endpoint %s failed: %v; reading HTTP body also failed: %v",
+				url, err, err2)
+		}
 		return fmt.Errorf("calling lightstreamer endpoint %q failed: %v http.StatusCode:%d Body: %q",
 			url, err, resp.StatusCode, string(body))
 	}
@@ -86,7 +94,11 @@ func (ig *IGMarkets) OpenLightStreamerSubscription(epics []string, tickReceiver 
 	url = fmt.Sprintf("%s/lightstreamer/bind_session.txt", sessionVersion2.LightstreamerEndpoint)
 	resp, err = c.Post(url, contentType, bodyBuf)
 	if err != nil {
-		body, _ := ioutil.ReadAll(resp.Body)
+		body, err2 := ioutil.ReadAll(resp.Body)
+		if err2 != nil {
+			return fmt.Errorf("calling lightstreamer endpoint %s failed: %v; reading HTTP body also failed: %v",
+				url, err, err2)
+		}
 		return fmt.Errorf("calling lightstreamer endpoint %q failed: %v http.StatusCode:%d Body: %q",
 			url, err, resp.StatusCode, string(body))
 	}
