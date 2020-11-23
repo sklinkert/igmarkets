@@ -107,14 +107,14 @@ func (ig *IGMarkets) OpenLightStreamerSubscription(epics []string, tickReceiver 
 }
 
 func readLightStreamSubscription(epics []string, tickReceiver chan LightStreamerTick, resp *http.Response) {
+	const epicNameUnknown = "unkown"
 	var respBuf = make([]byte, 64)
-	var parsedTime time.Time
-	var priceBid, priceAsk float64
+	var lastTicks = make(map[string]LightStreamerTick, len(epics)) // epic -> tick
 
 	defer close(tickReceiver)
 
 	// map table index -> epic name
-	var epicIndex = make(map[string]string)
+	var epicIndex = make(map[string]string, len(epics))
 	for i, epic := range epics {
 		epicIndex[fmt.Sprintf("1,%d", i+1)] = epic
 	}
@@ -143,6 +143,7 @@ func readLightStreamSubscription(epics []string, tickReceiver chan LightStreamer
 			continue
 		}
 
+		var parsedTime time.Time
 		if priceParts[1] != "" {
 			priceTime := priceParts[1]
 			now := time.Now().UTC()
@@ -154,12 +155,35 @@ func readLightStreamSubscription(epics []string, tickReceiver chan LightStreamer
 			}
 		}
 		tableIndex := priceParts[0]
-		priceBid, _ = strconv.ParseFloat(priceParts[2], 64)
-		priceAsk, _ = strconv.ParseFloat(priceParts[3], 64)
+		priceBid, err := strconv.ParseFloat(priceParts[2], 64)
+		if err != nil {
+			fmt.Printf("parsing bid price failed: %v\n", err)
+			continue
+		}
+		priceAsk, err := strconv.ParseFloat(priceParts[3], 64)
+		if err != nil {
+			fmt.Printf("parsing ask price failed: %v\n", err)
+			continue
+		}
 
 		epic, found := epicIndex[tableIndex]
 		if !found {
-			epic = "unknown"
+			epic = epicNameUnknown
+		}
+
+		if epic != epicNameUnknown {
+			var lastTick, found = lastTicks[epic]
+			if found {
+				if priceAsk == 0 {
+					priceAsk = lastTick.Ask
+				}
+				if priceBid == 0 {
+					priceBid = lastTick.Bid
+				}
+				if parsedTime.IsZero() {
+					parsedTime = lastTick.Time
+				}
+			}
 		}
 
 		tick := LightStreamerTick{
@@ -169,6 +193,7 @@ func readLightStreamSubscription(epics []string, tickReceiver chan LightStreamer
 			Ask:  priceAsk,
 		}
 		tickReceiver <- tick
+		lastTicks[epic] = tick
 	}
 }
 
