@@ -46,13 +46,16 @@ func (ig *IGMarkets) OpenLightStreamerSubscription(epics []string, tickReceiver 
 	url := fmt.Sprintf("%s/lightstreamer/create_session.txt", sessionVersion2.LightstreamerEndpoint)
 	resp, err := c.Post(url, contentType, bodyBuf)
 	if err != nil {
-		body, err2 := ioutil.ReadAll(resp.Body)
-		if err2 != nil {
-			return fmt.Errorf("calling lightstreamer endpoint %s failed: %v; reading HTTP body also failed: %v",
-				url, err, err2)
+		if resp != nil {
+			body, err2 := ioutil.ReadAll(resp.Body)
+			if err2 != nil {
+				return fmt.Errorf("calling lightstreamer endpoint %s failed: %v; reading HTTP body also failed: %v",
+					url, err, err2)
+			}
+			return fmt.Errorf("calling lightstreamer endpoint %s failed: %v http.StatusCode:%d Body: %q",
+				url, err, resp.StatusCode, string(body))
 		}
-		return fmt.Errorf("calling lightstreamer endpoint %s failed: %v http.StatusCode:%d Body: %q",
-			url, err, resp.StatusCode, string(body))
+		return fmt.Errorf("calling lightstreamer endpoint %q failed: %v", url, err)
 	}
 	respBody, _ := ioutil.ReadAll(resp.Body)
 	sessionMsg := string(respBody[:])
@@ -75,13 +78,16 @@ func (ig *IGMarkets) OpenLightStreamerSubscription(epics []string, tickReceiver 
 	url = fmt.Sprintf("%s/lightstreamer/control.txt", sessionVersion2.LightstreamerEndpoint)
 	resp, err = c.Post(url, contentType, bodyBuf)
 	if err != nil {
-		body, err2 := ioutil.ReadAll(resp.Body)
-		if err2 != nil {
-			return fmt.Errorf("calling lightstreamer endpoint %s failed: %v; reading HTTP body also failed: %v",
-				url, err, err2)
+		if resp != nil {
+			body, err2 := ioutil.ReadAll(resp.Body)
+			if err2 != nil {
+				return fmt.Errorf("calling lightstreamer endpoint %s failed: %v; reading HTTP body also failed: %v",
+					url, err, err2)
+			}
+			return fmt.Errorf("calling lightstreamer endpoint %q failed: %v http.StatusCode:%d Body: %q",
+				url, err, resp.StatusCode, string(body))
 		}
-		return fmt.Errorf("calling lightstreamer endpoint %q failed: %v http.StatusCode:%d Body: %q",
-			url, err, resp.StatusCode, string(body))
+		return fmt.Errorf("calling lightstreamer endpoint %q failed: %v", url, err)
 	}
 	body, _ = ioutil.ReadAll(resp.Body)
 	if !strings.HasPrefix(sessionMsg, "OK") {
@@ -94,13 +100,16 @@ func (ig *IGMarkets) OpenLightStreamerSubscription(epics []string, tickReceiver 
 	url = fmt.Sprintf("%s/lightstreamer/bind_session.txt", sessionVersion2.LightstreamerEndpoint)
 	resp, err = c.Post(url, contentType, bodyBuf)
 	if err != nil {
-		body, err2 := ioutil.ReadAll(resp.Body)
-		if err2 != nil {
-			return fmt.Errorf("calling lightstreamer endpoint %s failed: %v; reading HTTP body also failed: %v",
-				url, err, err2)
+		if resp != nil {
+			body, err2 := ioutil.ReadAll(resp.Body)
+			if err2 != nil {
+				return fmt.Errorf("calling lightstreamer endpoint %s failed: %v; reading HTTP body also failed: %v",
+					url, err, err2)
+			}
+			return fmt.Errorf("calling lightstreamer endpoint %q failed: %v http.StatusCode:%d Body: %q",
+				url, err, resp.StatusCode, string(body))
 		}
-		return fmt.Errorf("calling lightstreamer endpoint %q failed: %v http.StatusCode:%d Body: %q",
-			url, err, resp.StatusCode, string(body))
+		return fmt.Errorf("calling lightstreamer endpoint %q failed: %v", url, err)
 	}
 	go readLightStreamSubscription(epics, tickReceiver, resp)
 	return nil
@@ -155,16 +164,8 @@ func readLightStreamSubscription(epics []string, tickReceiver chan LightStreamer
 			}
 		}
 		tableIndex := priceParts[0]
-		priceBid, err := strconv.ParseFloat(priceParts[2], 64)
-		if err != nil {
-			fmt.Printf("parsing bid price failed: %v\n", err)
-			continue
-		}
-		priceAsk, err := strconv.ParseFloat(priceParts[3], 64)
-		if err != nil {
-			fmt.Printf("parsing ask price failed: %v\n", err)
-			continue
-		}
+		priceBid, _ := strconv.ParseFloat(priceParts[2], 64)
+		priceAsk, _ := strconv.ParseFloat(priceParts[3], 64)
 
 		epic, found := epicIndex[tableIndex]
 		if !found {
