@@ -108,7 +108,7 @@ func (ig *IGMarkets) OpenLightStreamerSubscription(epics []string, tickReceiver 
 
 func readLightStreamSubscription(epics []string, tickReceiver chan LightStreamerTick, resp *http.Response) {
 	var respBuf = make([]byte, 64)
-	var priceTime string
+	var parsedTime time.Time
 	var priceBid, priceAsk float64
 
 	defer close(tickReceiver)
@@ -144,14 +144,18 @@ func readLightStreamSubscription(epics []string, tickReceiver chan LightStreamer
 		}
 
 		if priceParts[1] != "" {
-			priceTime = priceParts[1]
+			priceTime := priceParts[1]
+			now := time.Now().UTC()
+			parsedTime, err = time.ParseInLocation("2006-01-02 15:04:05", fmt.Sprintf("%d-%d-%d %s",
+				now.Year(), now.Month(), now.Day(), priceTime), time.UTC)
+			if err != nil {
+				fmt.Printf("parsing time failed: %v time=%q\n", err, priceTime)
+				continue
+			}
 		}
 		tableIndex := priceParts[0]
 		priceBid, _ = strconv.ParseFloat(priceParts[2], 64)
 		priceAsk, _ = strconv.ParseFloat(priceParts[3], 64)
-		now := time.Now().UTC()
-		parsedTime, _ := time.ParseInLocation("2006-01-02 15:04:05", fmt.Sprintf("%d-%d-%d %s",
-			now.Year(), now.Month(), now.Day(), priceTime), time.UTC)
 
 		epic, found := epicIndex[tableIndex]
 		if !found {
