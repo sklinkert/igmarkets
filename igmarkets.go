@@ -502,7 +502,7 @@ func (ig *IGMarkets) Login() error {
 		return fmt.Errorf("igmarkets: unable to send HTTP request: %v", err)
 	}
 
-	igResponseInterface, err := ig.doRequest(req, 3, session{})
+	igResponseInterface, err := ig.doRequestWithoutOAuth(req, 3, session{})
 	if err != nil {
 		return err
 	}
@@ -791,15 +791,22 @@ func (ig *IGMarkets) MarketSearch(term string) (*MarketSearchResponse, error) {
 	return igResponse, err
 }
 
-func (ig *IGMarkets) doRequest(req *http.Request, endpointVersion int, igResponse interface{}) (interface{}, error) {
-	object, _, err := ig.doRequestWithResponseHeaders(req, endpointVersion, igResponse)
+func (ig *IGMarkets) doRequestWithoutOAuth(req *http.Request, endpointVersion int, igResponse interface{}) (interface{}, error) {
+	object, _, err := ig.doRequestWithResponseHeaders(req, endpointVersion, igResponse, false)
 	return object, err
 }
 
-func (ig *IGMarkets) doRequestWithResponseHeaders(req *http.Request, endpointVersion int, igResponse interface{}) (interface{}, http.Header, error) {
+func (ig *IGMarkets) doRequest(req *http.Request, endpointVersion int, igResponse interface{}) (interface{}, error) {
+	object, _, err := ig.doRequestWithResponseHeaders(req, endpointVersion, igResponse, true)
+	return object, err
+}
+
+func (ig *IGMarkets) doRequestWithResponseHeaders(req *http.Request, endpointVersion int, igResponse interface{}, oAuth bool) (interface{}, http.Header, error) {
 	ig.RLock()
+	if ig.OAuthToken.AccessToken != "" && oAuth {
+		req.Header.Set("Authorization", "Bearer "+ig.OAuthToken.AccessToken)
+	}
 	req.Header.Set("X-IG-API-KEY", ig.APIKey)
-	req.Header.Set("Authorization", "Bearer "+ig.OAuthToken.AccessToken)
 	req.Header.Set("IG-ACCOUNT-ID", ig.AccountID)
 	ig.RUnlock()
 

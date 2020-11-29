@@ -216,7 +216,7 @@ func (ig *IGMarkets) LoginVersion2() (*SessionVersion2, error) {
 		return nil, fmt.Errorf("igmarkets: unable to send HTTP request: %v", err)
 	}
 
-	igResponseInterface, headers, err := ig.doRequestWithResponseHeaders(req, 2, SessionVersion2{})
+	igResponseInterface, headers, err := ig.doRequestWithResponseHeaders(req, 2, SessionVersion2{}, false)
 	if err != nil {
 		return nil, err
 	}
