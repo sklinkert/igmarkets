@@ -37,7 +37,7 @@ func (ig *IGMarkets) OpenLightStreamerSubscription(epics []string, tickReceiver 
 	}
 
 	ig.Lock()
-	ig.TimeZone = timeZone
+	ig.TimeZoneLightStreamer = timeZone
 	ig.Unlock()
 
 	tr := &http.Transport{
@@ -166,7 +166,7 @@ func (ig *IGMarkets) readLightStreamSubscription(epics []string, tickReceiver ch
 			priceTime := priceParts[1]
 			now := time.Now().In(ig.TimeZone)
 			parsedTime, err = time.ParseInLocation("2006-1-2 15:04:05", fmt.Sprintf("%d-%d-%d %s",
-				now.Year(), now.Month(), now.Day(), priceTime), ig.TimeZone)
+				now.Year(), now.Month(), now.Day(), priceTime), ig.TimeZoneLightStreamer)
 			if err != nil {
 				fmt.Printf("parsing time failed: %v time=%q\n", err, priceTime)
 				continue
