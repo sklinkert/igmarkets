@@ -19,7 +19,7 @@ type LightStreamerTick struct {
 	Ask  float64
 }
 
-// GetOTCWorkingOrders - Get all working orders
+// OpenLightStreamerSubscription GetOTCWorkingOrders - Get all working orders
 // epic: e.g. CS.D.BITCOIN.CFD.IP
 // tickReceiver: receives all ticks from lightstreamer API
 func (ig *IGMarkets) OpenLightStreamerSubscription(epics []string, tickReceiver chan LightStreamerTick) error {
@@ -30,6 +30,15 @@ func (ig *IGMarkets) OpenLightStreamerSubscription(epics []string, tickReceiver 
 	if err != nil {
 		return fmt.Errorf("ig.LoginVersion2() failed: %v", err)
 	}
+
+	timeZone, err := time.LoadLocation("Europe/London")
+	if err != nil {
+		return err
+	}
+
+	ig.Lock()
+	ig.TimeZone = timeZone
+	ig.Unlock()
 
 	tr := &http.Transport{
 		MaxIdleConns:       1,
@@ -111,12 +120,12 @@ func (ig *IGMarkets) OpenLightStreamerSubscription(epics []string, tickReceiver 
 		}
 		return fmt.Errorf("calling lightstreamer endpoint %q failed: %v", url, err)
 	}
-	go readLightStreamSubscription(epics, tickReceiver, resp)
+	go ig.readLightStreamSubscription(epics, tickReceiver, resp)
 	return nil
 }
 
-func readLightStreamSubscription(epics []string, tickReceiver chan LightStreamerTick, resp *http.Response) {
-	const epicNameUnknown = "unkown"
+func (ig *IGMarkets) readLightStreamSubscription(epics []string, tickReceiver chan LightStreamerTick, resp *http.Response) {
+	const epicNameUnknown = "unknown"
 	var respBuf = make([]byte, 64)
 	var lastTicks = make(map[string]LightStreamerTick, len(epics)) // epic -> tick
 
@@ -155,9 +164,9 @@ func readLightStreamSubscription(epics []string, tickReceiver chan LightStreamer
 		var parsedTime time.Time
 		if priceParts[1] != "" {
 			priceTime := priceParts[1]
-			now := time.Now().UTC()
+			now := time.Now().In(ig.TimeZone)
 			parsedTime, err = time.ParseInLocation("2006-1-2 15:04:05", fmt.Sprintf("%d-%d-%d %s",
-				now.Year(), now.Month(), now.Day(), priceTime), time.UTC)
+				now.Year(), now.Month(), now.Day(), priceTime), ig.TimeZone)
 			if err != nil {
 				fmt.Printf("parsing time failed: %v time=%q\n", err, priceTime)
 				continue

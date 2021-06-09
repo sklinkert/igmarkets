@@ -319,7 +319,7 @@ type session struct {
 	AccountId             string     `json:"accountId"`
 	LightstreamerEndpoint string     `json:"lightstreamerEndpoint"`
 	OAuthToken            OAuthToken `json:"oauthToken"`
-	TimezoneOffset        int        `json:"timezoneOffset"` // In seconds
+	TimezoneOffset        int        `json:"timezoneOffset"` // In hours
 }
 
 // SessionVersion2 - IG auth response
@@ -331,7 +331,7 @@ type SessionVersion2 struct {
 	CurrentAccountId      string `json:"currentAccountId"` // "ABDGS"
 	LightstreamerEndpoint string `json:"lightstreamerEndpoint"`
 	ClientID              string `json:"clientId"`
-	TimezoneOffset        int    `json:"timezoneOffset"` // In seconds
+	TimezoneOffset        int    `json:"timezoneOffset"` // In hours
 	HasActiveDemoAccounts bool   `json:"hasActiveDemoAccounts"`
 	HasActiveLiveAccounts bool   `json:"hasActiveLiveAccounts"`
 	TrailingStopsEnabled  bool   `json:"trailingStopsEnabled"`
@@ -412,6 +412,7 @@ type IGMarkets struct {
 	AccountID  string
 	Identifier string
 	Password   string
+	TimeZone   *time.Location
 	OAuthToken OAuthToken
 	httpClient *http.Client
 	sync.RWMutex
@@ -524,6 +525,7 @@ func (ig *IGMarkets) Login() error {
 
 	ig.Lock()
 	ig.OAuthToken = session.OAuthToken
+	ig.TimeZone = timeZoneOffset2Location(session.TimezoneOffset)
 	ig.Unlock()
 
 	return nil
