@@ -164,7 +164,7 @@ func (ig *IGMarkets) readLightStreamSubscription(epics []string, tickReceiver ch
 		var parsedTime time.Time
 		if priceParts[1] != "" {
 			priceTime := priceParts[1]
-			now := time.Now().In(ig.TimeZone)
+			now := time.Now().In(ig.TimeZoneLightStreamer)
 			parsedTime, err = time.ParseInLocation("2006-1-2 15:04:05", fmt.Sprintf("%d-%d-%d %s",
 				now.Year(), now.Month(), now.Day(), priceTime), ig.TimeZoneLightStreamer)
 			if err != nil {
