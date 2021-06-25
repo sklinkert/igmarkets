@@ -53,4 +53,8 @@ func main() {
 		fmt.Printf("Deposit: %f\n", account.Balance.Deposit)
 		fmt.Printf("Status: %q\n", account.Status)
 	}
+
+	accountPreferences, err := ig.GetAccountPreferences()
+	checkErr(err)
+	fmt.Printf("TralingStopLossEnabled: %t\n", accountPreferences.TrailingStopsEnabled)
 }

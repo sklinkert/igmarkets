@@ -15,6 +15,7 @@ Reference: https://labs.ig.com/rest-trading-api-reference
 ### Account
 
 - GET /accounts
+- GET /accounts/preferences
 
 ### Session
 

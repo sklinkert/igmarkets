@@ -35,6 +35,10 @@ type Accounts struct {
 	} `json:"accounts"`
 }
 
+type AccountsPreferences struct {
+	TrailingStopsEnabled bool `json:"trailingStopsEnabled"`
+}
+
 // GetAccounts - Returns a list of accounts belonging to the logged-in client.
 func (ig *IGMarkets) GetAccounts() (*Accounts, error) {
 	bodyReq := new(bytes.Buffer)
@@ -49,6 +53,24 @@ func (ig *IGMarkets) GetAccounts() (*Accounts, error) {
 		return nil, err
 	}
 	accounts, _ := igResponseInterface.(*Accounts)
+
+	return accounts, err
+}
+
+// GetAccountPreferences - Returns all account related preferences
+func (ig *IGMarkets) GetAccountPreferences() (*AccountsPreferences, error) {
+	bodyReq := new(bytes.Buffer)
+
+	req, err := http.NewRequest("GET", fmt.Sprintf("%s/gateway/deal/accounts/preferences", ig.APIURL), bodyReq)
+	if err != nil {
+		return nil, fmt.Errorf("igmarkets: unable to get account preferences: %v", err)
+	}
+
+	igResponseInterface, err := ig.doRequest(req, 1, AccountsPreferences{})
+	if err != nil {
+		return nil, err
+	}
+	accounts, _ := igResponseInterface.(*AccountsPreferences)
 
 	return accounts, err
 }
