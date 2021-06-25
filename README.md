@@ -12,6 +12,10 @@ Reference: https://labs.ig.com/rest-trading-api-reference
 
 - Create session, add subscription(control), bind session
 
+### Account
+
+- GET /accounts
+
 ### Session
 
 - POST /session (version 2 + 3)
@@ -138,7 +142,7 @@ func main() {
 }
 ```
 
-
+More examples can be found [here](https://github.com/sklinkert/igmarkets/tree/master/examples).
 
 ### LightStreamer API Subscription Example
 
