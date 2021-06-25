@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+	"github.com/lfritz/env"
+	log "github.com/sirupsen/logrus"
 	"github.com/sklinkert/igmarkets"
 	"os"
 	"time"
@@ -14,13 +16,28 @@ func checkErr(err error) {
 	}
 }
 
-func main() {
-	apiKey := ""
-	accountID := ""
-	igIdent := ""
-	igPassword := ""
+var conf struct {
+	igAPIURL     string
+	igIdentifier string
+	igAPIKey     string
+	igPassword   string
+	igAccountID  string
+	instrument   string
+}
 
-	ig := igmarkets.New(igmarkets.DemoAPIURL, apiKey, accountID, igIdent, igPassword, time.Duration(5*time.Second))
+func main() {
+	var e = env.New()
+	e.OptionalString("INSTRUMENT", &conf.instrument, "CS.D.EURUSD.MINI.IP", "instrument to trade")
+	e.OptionalString("IG_API_URL", &conf.igAPIURL, igmarkets.DemoAPIURL, "IG API URL")
+	e.OptionalString("IG_IDENTIFIER", &conf.igIdentifier, "", "IG Identifier")
+	e.OptionalString("IG_API_KEY", &conf.igAPIKey, "", "IG API key")
+	e.OptionalString("IG_PASSWORD", &conf.igPassword, "", "IG password")
+	e.OptionalString("IG_ACCOUNT", &conf.igAccountID, "", "IG account ID")
+	if err := e.Load(); err != nil {
+		log.WithError(err).Fatal("env loading failed")
+	}
+
+	ig := igmarkets.New(conf.igAPIURL, conf.igAPIKey, conf.igAccountID, conf.igIdentifier, conf.igPassword, time.Second*30)
 	err := ig.Login()
 	checkErr(err)
 
