@@ -727,18 +727,21 @@ func (ig *IGMarkets) GetOTCWorkingOrders() (*WorkingOrders, error) {
 	return igResponse, err
 }
 
-// DeleteOTCWorkingOrder - Delete workingorder
-func (ig *IGMarkets) DeleteOTCWorkingOrder(dealRef string) error {
+// DeleteOTCWorkingOrder - Delete OTC working order
+func (ig *IGMarkets) DeleteOTCWorkingOrder(dealRef string) (*DealReference, error) {
 	bodyReq := new(bytes.Buffer)
 
 	req, err := http.NewRequest("DELETE", ig.APIURL+"/gateway/deal/workingorders/otc/"+dealRef, bodyReq)
 	if err != nil {
-		return fmt.Errorf("igmarkets: unable to create HTTP request: %v", err)
+		return nil, fmt.Errorf("igmarkets: unable to create HTTP request: %v", err)
 	}
 
-	_, err = ig.doRequest(req, 2, nil)
+	igResponseInterface, err := ig.doRequest(req, 2, nil)
+	if err != nil {
+		return nil, err
+	}
 
-	return err
+	return igResponseInterface.(*DealReference), nil
 }
 
 // GetMarkets - Return markets information for given epic
