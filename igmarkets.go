@@ -219,7 +219,7 @@ type OTCDealConfirmation struct {
 	Size                  float64        `json:"size"` // Deal size
 	StopDistance          float64        `json:"stopDistance"`
 	StopLevel             float64        `json:"stopLevel"`
-	LimitDistance         string         `json:"limitDistance,omitempty"`
+	LimitDistance         float64        `json:"limitDistance,omitempty"`
 	LimitLevel            float64        `json:"limitLevel"`
 	QuoteID               string         `json:"quoteId,omitempty"`
 	TimeInForce           string         `json:"timeInForce,omitempty"` // "EXECUTE_AND_ELIMINATE" or "FILL_OR_KILL"
