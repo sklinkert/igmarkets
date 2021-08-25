@@ -2,6 +2,7 @@ package igmarkets
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"net/http"
 )
@@ -40,7 +41,7 @@ type AccountsPreferences struct {
 }
 
 // GetAccounts - Returns a list of accounts belonging to the logged-in client.
-func (ig *IGMarkets) GetAccounts() (*Accounts, error) {
+func (ig *IGMarkets) GetAccounts(ctx context.Context) (*Accounts, error) {
 	bodyReq := new(bytes.Buffer)
 
 	req, err := http.NewRequest("GET", fmt.Sprintf("%s/gateway/deal/accounts", ig.APIURL), bodyReq)
@@ -48,7 +49,7 @@ func (ig *IGMarkets) GetAccounts() (*Accounts, error) {
 		return nil, fmt.Errorf("igmarkets: unable to get accounts: %v", err)
 	}
 
-	igResponseInterface, err := ig.doRequest(req, 1, Accounts{})
+	igResponseInterface, err := ig.doRequest(ctx, req, 1, Accounts{})
 	if err != nil {
 		return nil, err
 	}
@@ -58,7 +59,7 @@ func (ig *IGMarkets) GetAccounts() (*Accounts, error) {
 }
 
 // GetAccountPreferences - Returns all account related preferences
-func (ig *IGMarkets) GetAccountPreferences() (*AccountsPreferences, error) {
+func (ig *IGMarkets) GetAccountPreferences(ctx context.Context) (*AccountsPreferences, error) {
 	bodyReq := new(bytes.Buffer)
 
 	req, err := http.NewRequest("GET", fmt.Sprintf("%s/gateway/deal/accounts/preferences", ig.APIURL), bodyReq)
@@ -66,7 +67,7 @@ func (ig *IGMarkets) GetAccountPreferences() (*AccountsPreferences, error) {
 		return nil, fmt.Errorf("igmarkets: unable to get account preferences: %v", err)
 	}
 
-	igResponseInterface, err := ig.doRequest(req, 1, AccountsPreferences{})
+	igResponseInterface, err := ig.doRequest(ctx, req, 1, AccountsPreferences{})
 	if err != nil {
 		return nil, err
 	}

@@ -1,19 +1,20 @@
 package main
 
 import (
-	"github.com/sklinkert/igmarkets"
+	"context"
 	"github.com/lfritz/env"
 	log "github.com/sirupsen/logrus"
+	"github.com/sklinkert/igmarkets"
 	"time"
 )
 
 var conf struct {
-	igAPIURL               string
-	igIdentifier           string
-	igAPIKey               string
-	igPassword             string
-	igAccountID            string
-	instrument             string
+	igAPIURL     string
+	igIdentifier string
+	igAPIKey     string
+	igPassword   string
+	igAccountID  string
+	instrument   string
 }
 
 func main() {
@@ -28,15 +29,17 @@ func main() {
 		log.WithError(err).Fatal("env loading failed")
 	}
 
+	var ctx = context.Background()
+
 	for {
 		igHandle := igmarkets.New(conf.igAPIURL, conf.igAPIKey, conf.igAccountID, conf.igIdentifier, conf.igPassword, time.Second*30)
-		if err := igHandle.Login(); err != nil {
+		if err := igHandle.Login(ctx); err != nil {
 			log.WithError(err).Error("new fialed")
 			return
 		}
 
 		tickChan := make(chan igmarkets.LightStreamerTick)
-		err := igHandle.OpenLightStreamerSubscription([]string{"CS.D.EURUSD.MINI.IP", "CS.D.BITCOIN.CFD.IP"}, tickChan)
+		err := igHandle.OpenLightStreamerSubscription(ctx, []string{"CS.D.EURUSD.MINI.IP", "CS.D.BITCOIN.CFD.IP"}, tickChan)
 		if err != nil {
 			log.WithError(err).Error("open stream fialed")
 		}

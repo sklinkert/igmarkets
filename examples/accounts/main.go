@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"github.com/lfritz/env"
 	log "github.com/sirupsen/logrus"
@@ -37,11 +38,13 @@ func main() {
 		log.WithError(err).Fatal("env loading failed")
 	}
 
+	var ctx = context.Background()
+
 	ig := igmarkets.New(conf.igAPIURL, conf.igAPIKey, conf.igAccountID, conf.igIdentifier, conf.igPassword, time.Second*30)
-	err := ig.Login()
+	err := ig.Login(ctx)
 	checkErr(err)
 
-	accounts, err := ig.GetAccounts()
+	accounts, err := ig.GetAccounts(ctx)
 	checkErr(err)
 
 	for _, account := range accounts.Accounts {
@@ -54,7 +57,7 @@ func main() {
 		fmt.Printf("Status: %q\n", account.Status)
 	}
 
-	accountPreferences, err := ig.GetAccountPreferences()
+	accountPreferences, err := ig.GetAccountPreferences(ctx)
 	checkErr(err)
 	fmt.Printf("TralingStopLossEnabled: %t\n", accountPreferences.TrailingStopsEnabled)
 }

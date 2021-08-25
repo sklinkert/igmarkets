@@ -67,6 +67,7 @@ Reference: https://labs.ig.com/rest-trading-api-reference
 package main
 
 import (
+	    "context"
         "fmt"
         "github.com/sklinkert/igmarkets"
         "time"
@@ -75,15 +76,16 @@ import (
 var ig *igmarkets.IGMarkets
 
 func main() {
-        httpTimeout := time.Duration(5 * time.Second)
+	    var ctx = context.Background()
+        var httpTimeout = time.Duration(5 * time.Second)
 
         ig = igmarkets.New(igmarkets.DemoAPIURL, "APIKEY", "ACCOUNTID", "USERNAME/IDENTIFIER", "PASSWORD", httpTimeout)
-        if err := ig.Login(); err != nil {
+        if err := ig.Login(ctx); err != nil {
                 fmt.Println("Unable to login into IG account", err)
         }
 
         // Get current open ask, open bid, close ask, close bid, high ask, high bid, low ask, and low bid
-        prices, _ := ig.GetPrice("CS.D.EURUSD.CFD.IP")
+        prices, _ := ig.GetPrice(ctx, "CS.D.EURUSD.CFD.IP")
 
         fmt.Println(prices)
 
@@ -100,7 +102,7 @@ func main() {
                 GuaranteedStop: true,
                 ForceOpen:      true,
         }
-        dealRef, err := ig.PlaceOTCOrder(order)
+        dealRef, err := ig.PlaceOTCOrder(ctx, order)
         if err != nil {
                 fmt.Println("Unable to place order:", err)
                 return
@@ -108,7 +110,7 @@ func main() {
         fmt.Println("New order placed with dealRef", dealRef)
 
         // Check order status
-        confirmation, err := ig.GetDealConfirmation(dealRef)
+        confirmation, err := ig.GetDealConfirmation(ctx, dealRef)
         if err != nil {
                 fmt.Println("Cannot get deal confirmation for:", dealRef, err)
                 return
@@ -122,7 +124,7 @@ func main() {
         fmt.Println("Level", confirmation.Level) // Buy price
 
         // List transactions
-        transactionResponse, err := ig.GetTransactions("ALL", time.Now().AddDate(0, 0, -30).UTC()) // last 30 days
+        transactionResponse, err := ig.GetTransactions(ctx, "ALL", time.Now().AddDate(0, 0, -30).UTC()) // last 30 days
         if err != nil {
                 fmt.Println("Unable to get transactions: ", err)
         }
@@ -138,7 +140,7 @@ func main() {
 	}
 
         // Example of getting client sentiment
-        sentiment, _ := ig.GetClientSentiment("F-US") //Ford
+        sentiment, _ := ig.GetClientSentiment(ctx, "F-US") //Ford
         fmt.Println("Sentiment example:", sentiment)
 }
 ```
@@ -148,9 +150,10 @@ More examples can be found [here](https://github.com/sklinkert/igmarkets/tree/ma
 ### LightStreamer API Subscription Example
 
 ```go
+    var ctx = context.Background()
 	for {
 		tickChan := make(chan igmarkets.LightStreamerTick)
-    err := igHandle.OpenLightStreamerSubscription([]string{"CS.D.BITCOIN.CFD.IP"}, tickChan)
+    err := igHandle.OpenLightStreamerSubscription(ctx, []string{"CS.D.BITCOIN.CFD.IP"}, tickChan)
 		if err != nil {
       log.WithError(err).Error("OpenLightStreamerSubscription() failed")
 		}

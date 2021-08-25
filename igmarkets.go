@@ -2,6 +2,7 @@ package igmarkets
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -443,7 +444,7 @@ func New(apiURL, apiKey, accountID, identifier, password string, httpTimeout tim
 }
 
 // RefreshToken - Get new OAuthToken from API and set it to IGMarkets object
-func (ig *IGMarkets) RefreshToken() error {
+func (ig *IGMarkets) RefreshToken(ctx context.Context) error {
 	bodyReq := new(bytes.Buffer)
 
 	var authReq = refreshTokenRequest{
@@ -459,7 +460,7 @@ func (ig *IGMarkets) RefreshToken() error {
 		return fmt.Errorf("igmarkets: unable to send HTTP request: %v", err)
 	}
 
-	igResponseInterface, err := ig.doRequest(req, 1, OAuthToken{})
+	igResponseInterface, err := ig.doRequest(ctx, req, 1, OAuthToken{})
 	if err != nil {
 		return err
 	}
@@ -487,7 +488,7 @@ func (ig *IGMarkets) RefreshToken() error {
 }
 
 // Login - Get new OAuthToken from API and set it to IGMarkets object
-func (ig *IGMarkets) Login() error {
+func (ig *IGMarkets) Login(ctx context.Context) error {
 	bodyReq := new(bytes.Buffer)
 
 	var authReq = authRequest{
@@ -504,7 +505,7 @@ func (ig *IGMarkets) Login() error {
 		return fmt.Errorf("igmarkets: unable to send HTTP request: %v", err)
 	}
 
-	igResponseInterface, err := ig.doRequestWithoutOAuth(req, 3, session{})
+	igResponseInterface, err := ig.doRequestWithoutOAuth(ctx, req, 3, session{})
 	if err != nil {
 		return err
 	}
@@ -533,12 +534,12 @@ func (ig *IGMarkets) Login() error {
 }
 
 // GetPrice - Return the minute prices for the last 10 minutes for the given epic.
-func (ig *IGMarkets) GetPrice(epic string) (*PriceResponse, error) {
-	return ig.GetPriceHistory(epic, ResolutionSecond, 1, time.Time{}, time.Time{})
+func (ig *IGMarkets) GetPrice(ctx context.Context, epic string) (*PriceResponse, error) {
+	return ig.GetPriceHistory(ctx, epic, ResolutionSecond, 1, time.Time{}, time.Time{})
 }
 
 // GetTransactions - Return all transaction
-func (ig *IGMarkets) GetTransactions(transactionType string, from time.Time) (*HistoryTransactionResponse, error) {
+func (ig *IGMarkets) GetTransactions(ctx context.Context, transactionType string, from time.Time) (*HistoryTransactionResponse, error) {
 	bodyReq := new(bytes.Buffer)
 	fromStr := from.Format("2006-01-02T15:04:05")
 
@@ -548,7 +549,7 @@ func (ig *IGMarkets) GetTransactions(transactionType string, from time.Time) (*H
 		return nil, fmt.Errorf("igmarkets: unable to get transactions: %v", err)
 	}
 
-	igResponseInterface, err := ig.doRequest(req, 2, HistoryTransactionResponse{})
+	igResponseInterface, err := ig.doRequest(ctx, req, 2, HistoryTransactionResponse{})
 	if err != nil {
 		return nil, err
 	}
@@ -558,7 +559,7 @@ func (ig *IGMarkets) GetTransactions(transactionType string, from time.Time) (*H
 }
 
 // GetPriceHistory - Return the minute prices for the last 10 minutes for the given epic.
-func (ig *IGMarkets) GetPriceHistory(epic, resolution string, max int, from, to time.Time) (*PriceResponse, error) {
+func (ig *IGMarkets) GetPriceHistory(ctx context.Context, epic, resolution string, max int, from, to time.Time) (*PriceResponse, error) {
 	bodyReq := new(bytes.Buffer)
 
 	limitStr := ""
@@ -578,7 +579,7 @@ func (ig *IGMarkets) GetPriceHistory(epic, resolution string, max int, from, to 
 		return nil, fmt.Errorf("igmarkets: unable to get price: %v", err)
 	}
 
-	igResponseInterface, err := ig.doRequest(req, 3, PriceResponse{})
+	igResponseInterface, err := ig.doRequest(ctx, req, 3, PriceResponse{})
 	if err != nil {
 		return nil, err
 	}
@@ -588,7 +589,7 @@ func (ig *IGMarkets) GetPriceHistory(epic, resolution string, max int, from, to 
 }
 
 // PlaceOTCOrder - Place an OTC order
-func (ig *IGMarkets) PlaceOTCOrder(order OTCOrderRequest) (*DealReference, error) {
+func (ig *IGMarkets) PlaceOTCOrder(ctx context.Context, order OTCOrderRequest) (*DealReference, error) {
 	bodyReq, err := json.Marshal(&order)
 	if err != nil {
 		return nil, fmt.Errorf("igmarkets: cannot marshal: %v", err)
@@ -598,7 +599,7 @@ func (ig *IGMarkets) PlaceOTCOrder(order OTCOrderRequest) (*DealReference, error
 		return nil, fmt.Errorf("igmarkets: cannot create HTTP request: %v", err)
 	}
 
-	igResponseInterface, err := ig.doRequest(req, 2, DealReference{})
+	igResponseInterface, err := ig.doRequest(ctx, req, 2, DealReference{})
 	if err != nil {
 		return nil, err
 	}
@@ -606,7 +607,7 @@ func (ig *IGMarkets) PlaceOTCOrder(order OTCOrderRequest) (*DealReference, error
 }
 
 // UpdateOTCOrder - Update an exisiting OTC order
-func (ig *IGMarkets) UpdateOTCOrder(dealID string, order OTCUpdateOrderRequest) (*DealReference, error) {
+func (ig *IGMarkets) UpdateOTCOrder(ctx context.Context, dealID string, order OTCUpdateOrderRequest) (*DealReference, error) {
 	bodyReq, err := json.Marshal(&order)
 	if err != nil {
 		return nil, fmt.Errorf("igmarkets: cannot marshal: %v", err)
@@ -616,7 +617,7 @@ func (ig *IGMarkets) UpdateOTCOrder(dealID string, order OTCUpdateOrderRequest) 
 		return nil, fmt.Errorf("igmarkets: cannot create HTTP request: %v", err)
 	}
 
-	igResponseInterface, err := ig.doRequest(req, 2, DealReference{})
+	igResponseInterface, err := ig.doRequest(ctx, req, 2, DealReference{})
 	if err != nil {
 		return nil, err
 	}
@@ -624,7 +625,7 @@ func (ig *IGMarkets) UpdateOTCOrder(dealID string, order OTCUpdateOrderRequest) 
 }
 
 // CloseOTCPosition - Close an OTC position
-func (ig *IGMarkets) CloseOTCPosition(close OTCPositionCloseRequest) (*DealReference, error) {
+func (ig *IGMarkets) CloseOTCPosition(ctx context.Context, close OTCPositionCloseRequest) (*DealReference, error) {
 	bodyReq, err := json.Marshal(&close)
 	if err != nil {
 		return nil, fmt.Errorf("igmarkets: cannot marshal: %v", err)
@@ -636,7 +637,7 @@ func (ig *IGMarkets) CloseOTCPosition(close OTCPositionCloseRequest) (*DealRefer
 
 	req.Header.Set("_method", "DELETE")
 
-	igResponseInterface, err := ig.doRequest(req, 1, DealReference{})
+	igResponseInterface, err := ig.doRequest(ctx, req, 1, DealReference{})
 	if err != nil {
 		return nil, err
 	}
@@ -644,7 +645,7 @@ func (ig *IGMarkets) CloseOTCPosition(close OTCPositionCloseRequest) (*DealRefer
 }
 
 // GetDealConfirmation - Check if the given order was closed/filled
-func (ig *IGMarkets) GetDealConfirmation(dealRef string) (*OTCDealConfirmation, error) {
+func (ig *IGMarkets) GetDealConfirmation(ctx context.Context, dealRef string) (*OTCDealConfirmation, error) {
 	bodyReq := new(bytes.Buffer)
 
 	req, err := http.NewRequest("GET", ig.APIURL+"/gateway/deal/confirms/"+dealRef, bodyReq)
@@ -652,7 +653,7 @@ func (ig *IGMarkets) GetDealConfirmation(dealRef string) (*OTCDealConfirmation, 
 		return nil, fmt.Errorf("igmarkets: unable to create HTTP request: %v", err)
 	}
 
-	igResponseInterface, err := ig.doRequest(req, 1, OTCDealConfirmation{})
+	igResponseInterface, err := ig.doRequest(ctx, req, 1, OTCDealConfirmation{})
 	if err != nil {
 		return nil, err
 	}
@@ -662,7 +663,7 @@ func (ig *IGMarkets) GetDealConfirmation(dealRef string) (*OTCDealConfirmation, 
 }
 
 // GetPositions - Get all open positions
-func (ig *IGMarkets) GetPositions() (*PositionsResponse, error) {
+func (ig *IGMarkets) GetPositions(ctx context.Context) (*PositionsResponse, error) {
 	bodyReq := new(bytes.Buffer)
 
 	req, err := http.NewRequest("GET", ig.APIURL+"/gateway/deal/positions/", bodyReq)
@@ -670,7 +671,7 @@ func (ig *IGMarkets) GetPositions() (*PositionsResponse, error) {
 		return nil, fmt.Errorf("igmarkets: unable to create HTTP request: %v", err)
 	}
 
-	igResponseInterface, err := ig.doRequest(req, 2, PositionsResponse{})
+	igResponseInterface, err := ig.doRequest(ctx, req, 2, PositionsResponse{})
 	if err != nil {
 		return nil, err
 	}
@@ -680,7 +681,7 @@ func (ig *IGMarkets) GetPositions() (*PositionsResponse, error) {
 }
 
 // DeletePositionsOTC - Closes one or more OTC positions
-func (ig *IGMarkets) DeletePositionsOTC() error {
+func (ig *IGMarkets) DeletePositionsOTC(ctx context.Context) error {
 	bodyReq := new(bytes.Buffer)
 
 	req, err := http.NewRequest("DELETE", ig.APIURL+"/gateway/deal/positions/otc", bodyReq)
@@ -688,12 +689,12 @@ func (ig *IGMarkets) DeletePositionsOTC() error {
 		return fmt.Errorf("igmarkets: unable to create HTTP request: %v", err)
 	}
 
-	_, err = ig.doRequest(req, 1, nil)
+	_, err = ig.doRequest(ctx, req, 1, nil)
 	return err
 }
 
 // PlaceOTCWorkingOrder - Place an OTC workingorder
-func (ig *IGMarkets) PlaceOTCWorkingOrder(order OTCWorkingOrderRequest) (*DealReference, error) {
+func (ig *IGMarkets) PlaceOTCWorkingOrder(ctx context.Context, order OTCWorkingOrderRequest) (*DealReference, error) {
 	bodyReq, err := json.Marshal(&order)
 	if err != nil {
 		return nil, fmt.Errorf("igmarkets: unable to marshal JSON: %v", err)
@@ -703,7 +704,7 @@ func (ig *IGMarkets) PlaceOTCWorkingOrder(order OTCWorkingOrderRequest) (*DealRe
 		return nil, fmt.Errorf("igmarkets: unable to create HTTP request: %v", err)
 	}
 
-	igResponseInterface, err := ig.doRequest(req, 2, DealReference{})
+	igResponseInterface, err := ig.doRequest(ctx, req, 2, DealReference{})
 	if err != nil {
 		return nil, err
 	}
@@ -711,14 +712,14 @@ func (ig *IGMarkets) PlaceOTCWorkingOrder(order OTCWorkingOrderRequest) (*DealRe
 }
 
 // GetOTCWorkingOrders - Get all working orders
-func (ig *IGMarkets) GetOTCWorkingOrders() (*WorkingOrders, error) {
+func (ig *IGMarkets) GetOTCWorkingOrders(ctx context.Context) (*WorkingOrders, error) {
 	bodyReq := new(bytes.Buffer)
 	req, err := http.NewRequest("GET", ig.APIURL+"/gateway/deal/workingorders/", bodyReq)
 	if err != nil {
 		return nil, fmt.Errorf("igmarkets: unable to create HTTP request: %v", err)
 	}
 
-	igResponseInterface, err := ig.doRequest(req, 2, WorkingOrders{})
+	igResponseInterface, err := ig.doRequest(ctx, req, 2, WorkingOrders{})
 	if err != nil {
 		return nil, err
 	}
@@ -728,7 +729,7 @@ func (ig *IGMarkets) GetOTCWorkingOrders() (*WorkingOrders, error) {
 }
 
 // DeleteOTCWorkingOrder - Delete OTC working order
-func (ig *IGMarkets) DeleteOTCWorkingOrder(dealRef string) (*DealReference, error) {
+func (ig *IGMarkets) DeleteOTCWorkingOrder(ctx context.Context, dealRef string) (*DealReference, error) {
 	bodyReq := new(bytes.Buffer)
 
 	req, err := http.NewRequest("DELETE", ig.APIURL+"/gateway/deal/workingorders/otc/"+dealRef, bodyReq)
@@ -736,7 +737,7 @@ func (ig *IGMarkets) DeleteOTCWorkingOrder(dealRef string) (*DealReference, erro
 		return nil, fmt.Errorf("igmarkets: unable to create HTTP request: %v", err)
 	}
 
-	igResponseInterface, err := ig.doRequest(req, 2, DealReference{})
+	igResponseInterface, err := ig.doRequest(ctx, req, 2, DealReference{})
 	if err != nil {
 		return nil, err
 	}
@@ -745,7 +746,7 @@ func (ig *IGMarkets) DeleteOTCWorkingOrder(dealRef string) (*DealReference, erro
 }
 
 // GetMarkets - Return markets information for given epic
-func (ig *IGMarkets) GetMarkets(epic string) (*MarketsResponse, error) {
+func (ig *IGMarkets) GetMarkets(ctx context.Context, epic string) (*MarketsResponse, error) {
 	bodyReq := new(bytes.Buffer)
 
 	req, err := http.NewRequest("GET", fmt.Sprintf("%s/gateway/deal/markets/%s",
@@ -754,7 +755,7 @@ func (ig *IGMarkets) GetMarkets(epic string) (*MarketsResponse, error) {
 		return nil, fmt.Errorf("igmarkets: unable to get markets data: %v", err)
 	}
 
-	igResponseInterface, err := ig.doRequest(req, 3, MarketsResponse{})
+	igResponseInterface, err := ig.doRequest(ctx, req, 3, MarketsResponse{})
 	if err != nil {
 		return nil, err
 	}
@@ -764,7 +765,7 @@ func (ig *IGMarkets) GetMarkets(epic string) (*MarketsResponse, error) {
 }
 
 // GetClientSentiment - Get the client sentiment for the given instrument's market
-func (ig *IGMarkets) GetClientSentiment(MarketID string) (*ClientSentimentResponse, error) {
+func (ig *IGMarkets) GetClientSentiment(ctx context.Context, MarketID string) (*ClientSentimentResponse, error) {
 	bodyReq := new(bytes.Buffer)
 
 	req, err := http.NewRequest("GET", ig.APIURL+"/gateway/deal/clientsentiment/"+MarketID, bodyReq)
@@ -772,13 +773,13 @@ func (ig *IGMarkets) GetClientSentiment(MarketID string) (*ClientSentimentRespon
 		return nil, fmt.Errorf("igmarkets: unable to create HTTP request for GetClientSentiment: %v", err)
 	}
 
-	igResponseInterface, err := ig.doRequest(req, 1, ClientSentimentResponse{})
+	igResponseInterface, err := ig.doRequest(ctx, req, 1, ClientSentimentResponse{})
 	igResponse, _ := igResponseInterface.(*ClientSentimentResponse)
 	return igResponse, err
 }
 
 // MarketSearch - Search for ISIN or share names to get the epic.
-func (ig *IGMarkets) MarketSearch(term string) (*MarketSearchResponse, error) {
+func (ig *IGMarkets) MarketSearch(ctx context.Context, term string) (*MarketSearchResponse, error) {
 	bodyReq := new(bytes.Buffer)
 
 	// E.g. https://demo-api.ig.com/gateway/deal/markets?searchTerm=DE0005008007
@@ -788,7 +789,7 @@ func (ig *IGMarkets) MarketSearch(term string) (*MarketSearchResponse, error) {
 		return nil, fmt.Errorf("igmarkets: unable to get markets data: %v", err)
 	}
 
-	igResponseInterface, err := ig.doRequest(req, 1, MarketSearchResponse{})
+	igResponseInterface, err := ig.doRequest(ctx, req, 1, MarketSearchResponse{})
 	if err != nil {
 		return nil, err
 	}
@@ -797,17 +798,17 @@ func (ig *IGMarkets) MarketSearch(term string) (*MarketSearchResponse, error) {
 	return igResponse, err
 }
 
-func (ig *IGMarkets) doRequestWithoutOAuth(req *http.Request, endpointVersion int, igResponse interface{}) (interface{}, error) {
-	object, _, err := ig.doRequestWithResponseHeaders(req, endpointVersion, igResponse, false)
+func (ig *IGMarkets) doRequestWithoutOAuth(ctx context.Context, req *http.Request, endpointVersion int, igResponse interface{}) (interface{}, error) {
+	object, _, err := ig.doRequestWithResponseHeaders(ctx, req, endpointVersion, igResponse, false)
 	return object, err
 }
 
-func (ig *IGMarkets) doRequest(req *http.Request, endpointVersion int, igResponse interface{}) (interface{}, error) {
-	object, _, err := ig.doRequestWithResponseHeaders(req, endpointVersion, igResponse, true)
+func (ig *IGMarkets) doRequest(ctx context.Context, req *http.Request, endpointVersion int, igResponse interface{}) (interface{}, error) {
+	object, _, err := ig.doRequestWithResponseHeaders(ctx, req, endpointVersion, igResponse, true)
 	return object, err
 }
 
-func (ig *IGMarkets) doRequestWithResponseHeaders(req *http.Request, endpointVersion int, igResponse interface{}, oAuth bool) (interface{}, http.Header, error) {
+func (ig *IGMarkets) doRequestWithResponseHeaders(ctx context.Context, req *http.Request, endpointVersion int, igResponse interface{}, oAuth bool) (interface{}, http.Header, error) {
 	ig.RLock()
 	if ig.OAuthToken.AccessToken != "" && oAuth {
 		req.Header.Set("Authorization", "Bearer "+ig.OAuthToken.AccessToken)
@@ -820,6 +821,7 @@ func (ig *IGMarkets) doRequestWithResponseHeaders(req *http.Request, endpointVer
 	req.Header.Set("Content-Type", "application/json; charset=UTF-8")
 	req.Header.Set("VERSION", fmt.Sprintf("%d", endpointVersion))
 
+	req = req.WithContext(ctx)
 	resp, err := ig.httpClient.Do(req)
 	if err != nil {
 		return igResponse, nil, fmt.Errorf("igmarkets: unable to get markets data: %v", err)

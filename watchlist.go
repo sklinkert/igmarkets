@@ -2,6 +2,7 @@ package igmarkets
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -44,7 +45,7 @@ type CreateWatchlistRequest struct {
 }
 
 // DeleteFromWatchlist - Delete epic from watchlist
-func (ig *IGMarkets) DeleteFromWatchlist(watchListID, epic string) error {
+func (ig *IGMarkets) DeleteFromWatchlist(ctx context.Context, watchListID, epic string) error {
 	bodyReq := new(bytes.Buffer)
 
 	req, err := http.NewRequest("DELETE", fmt.Sprintf("%s/gateway/deal/watchlists/%s/%s",
@@ -53,13 +54,13 @@ func (ig *IGMarkets) DeleteFromWatchlist(watchListID, epic string) error {
 		return fmt.Errorf("igmarkets: unable to create HTTP request: %v", err)
 	}
 
-	_, err = ig.doRequest(req, 1, nil)
+	_, err = ig.doRequest(ctx, req, 1, nil)
 
 	return err
 }
 
 // AddToWatchlist - Add epic to existing watchlist
-func (ig *IGMarkets) AddToWatchlist(watchListID, epic string) error {
+func (ig *IGMarkets) AddToWatchlist(ctx context.Context, watchListID, epic string) error {
 	wreq := WatchlistRequest{Epic: epic}
 	bodyReq, err := json.Marshal(&wreq)
 	if err != nil {
@@ -71,13 +72,13 @@ func (ig *IGMarkets) AddToWatchlist(watchListID, epic string) error {
 		return fmt.Errorf("igmarkets: unable to create HTTP request: %v", err)
 	}
 
-	_, err = ig.doRequest(req, 1, nil)
+	_, err = ig.doRequest(ctx, req, 1, nil)
 
 	return err
 }
 
 // GetWatchlist - Get specific watchlist
-func (ig *IGMarkets) GetWatchlist(watchListID string) (*WatchlistData, error) {
+func (ig *IGMarkets) GetWatchlist(ctx context.Context, watchListID string) (*WatchlistData, error) {
 	bodyReq := new(bytes.Buffer)
 
 	req, err := http.NewRequest("GET", ig.APIURL+"/gateway/deal/watchlists/"+watchListID, bodyReq)
@@ -85,14 +86,14 @@ func (ig *IGMarkets) GetWatchlist(watchListID string) (*WatchlistData, error) {
 		return &WatchlistData{}, fmt.Errorf("igmarkets: unable to create HTTP request: %v", err)
 	}
 
-	igResponseInterface, err := ig.doRequest(req, 1, WatchlistData{})
+	igResponseInterface, err := ig.doRequest(ctx, req, 1, WatchlistData{})
 	igResponse, _ := igResponseInterface.(*WatchlistData)
 
 	return igResponse, err
 }
 
 // GetAllWatchlists - Get all watchlist
-func (ig *IGMarkets) GetAllWatchlists() (*[]Watchlist, error) {
+func (ig *IGMarkets) GetAllWatchlists(ctx context.Context) (*[]Watchlist, error) {
 	bodyReq := new(bytes.Buffer)
 
 	req, err := http.NewRequest("GET", ig.APIURL+"/gateway/deal/watchlists", bodyReq)
@@ -100,14 +101,14 @@ func (ig *IGMarkets) GetAllWatchlists() (*[]Watchlist, error) {
 		return &[]Watchlist{}, fmt.Errorf("igmarkets: unable to create HTTP request: %v", err)
 	}
 
-	igResponseInterface, err := ig.doRequest(req, 1, WatchlistsResponse{})
+	igResponseInterface, err := ig.doRequest(ctx, req, 1, WatchlistsResponse{})
 	igResponse, _ := igResponseInterface.(*WatchlistsResponse)
 
 	return &igResponse.Watchlists, err
 }
 
 // DeleteWatchlist - Delete whole watchlist
-func (ig *IGMarkets) DeleteWatchlist(watchListID string) error {
+func (ig *IGMarkets) DeleteWatchlist(ctx context.Context, watchListID string) error {
 	bodyReq := new(bytes.Buffer)
 
 	req, err := http.NewRequest("DELETE", fmt.Sprintf("%s/gateway/deal/watchlists/%s",
@@ -116,13 +117,13 @@ func (ig *IGMarkets) DeleteWatchlist(watchListID string) error {
 		return fmt.Errorf("igmarkets: unable to create HTTP request: %v", err)
 	}
 
-	_, err = ig.doRequest(req, 1, nil)
+	_, err = ig.doRequest(ctx, req, 1, nil)
 
 	return err
 }
 
 // CreateWatchlist - Create new watchlist
-func (ig *IGMarkets) CreateWatchlist(name string, epics []string) (watchlistID string, err error) {
+func (ig *IGMarkets) CreateWatchlist(ctx context.Context, name string, epics []string) (watchlistID string, err error) {
 	wreq := CreateWatchlistRequest{
 		Name:  name,
 		Epics: epics,
@@ -138,7 +139,7 @@ func (ig *IGMarkets) CreateWatchlist(name string, epics []string) (watchlistID s
 		return "", fmt.Errorf("igmarkets: unable to create HTTP request: %v", err)
 	}
 
-	igResponseInterface, err := ig.doRequest(req, 1, CreateWatchlistResponse{})
+	igResponseInterface, err := ig.doRequest(ctx, req, 1, CreateWatchlistResponse{})
 	if err != nil {
 		return "", err
 	}

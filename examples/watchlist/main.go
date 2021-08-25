@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"github.com/lfritz/env"
 	log "github.com/sirupsen/logrus"
@@ -37,33 +38,35 @@ func main() {
 		log.WithError(err).Fatal("env loading failed")
 	}
 
+	var ctx = context.Background()
+
 	ig := igmarkets.New(conf.igAPIURL, conf.igAPIKey, conf.igAccountID, conf.igIdentifier, conf.igPassword, time.Second*30)
-	err := ig.Login()
+	err := ig.Login(ctx)
 	checkErr(err)
 
-	watchlistID, err := ig.CreateWatchlist("example watchlist", []string{})
+	watchlistID, err := ig.CreateWatchlist(ctx, "example watchlist", []string{})
 	checkErr(err)
 	fmt.Printf("Watchlist created: %q\n", watchlistID)
 
-	err = ig.AddToWatchlist(watchlistID, "CS.D.EURJPY.CFD.IP")
+	err = ig.AddToWatchlist(ctx, watchlistID, "CS.D.EURJPY.CFD.IP")
 	checkErr(err)
 	fmt.Println("Epic added")
 
-	watchlist, err := ig.GetWatchlist(watchlistID)
+	watchlist, err := ig.GetWatchlist(ctx, watchlistID)
 	checkErr(err)
 	fmt.Printf("Got watchlist: %v\n", watchlist)
 
-	watchlists, err := ig.GetAllWatchlists()
+	watchlists, err := ig.GetAllWatchlists(ctx)
 	checkErr(err)
 	for _, list := range *watchlists {
 		fmt.Printf("Found watchlist: %v\n", list)
 	}
 
-	ig.DeleteFromWatchlist(watchlistID, "CS.D.EURJPY.CFD.IP")
+	ig.DeleteFromWatchlist(ctx, watchlistID, "CS.D.EURJPY.CFD.IP")
 	checkErr(err)
 	fmt.Println("Epic deleted")
 
-	ig.DeleteWatchlist(watchlistID)
+	ig.DeleteWatchlist(ctx, watchlistID)
 	checkErr(err)
 	fmt.Println("Watchlist deleted")
 }

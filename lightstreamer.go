@@ -2,6 +2,7 @@ package igmarkets
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -22,11 +23,11 @@ type LightStreamerTick struct {
 // OpenLightStreamerSubscription GetOTCWorkingOrders - Get all working orders
 // epic: e.g. CS.D.BITCOIN.CFD.IP
 // tickReceiver: receives all ticks from lightstreamer API
-func (ig *IGMarkets) OpenLightStreamerSubscription(epics []string, tickReceiver chan LightStreamerTick) error {
+func (ig *IGMarkets) OpenLightStreamerSubscription(ctx context.Context, epics []string, tickReceiver chan LightStreamerTick) error {
 	const contentType = "application/x-www-form-urlencoded"
 
 	// Obtain CST and XST tokens first
-	sessionVersion2, err := ig.LoginVersion2()
+	sessionVersion2, err := ig.LoginVersion2(ctx)
 	if err != nil {
 		return fmt.Errorf("ig.LoginVersion2() failed: %v", err)
 	}
@@ -208,7 +209,7 @@ func (ig *IGMarkets) readLightStreamSubscription(epics []string, tickReceiver ch
 }
 
 // LoginVersion2 - use old login version. contains required data for LightStreamer API
-func (ig *IGMarkets) LoginVersion2() (*SessionVersion2, error) {
+func (ig *IGMarkets) LoginVersion2(ctx context.Context) (*SessionVersion2, error) {
 	bodyReq := new(bytes.Buffer)
 
 	var authReq = authRequest{
@@ -225,7 +226,7 @@ func (ig *IGMarkets) LoginVersion2() (*SessionVersion2, error) {
 		return nil, fmt.Errorf("igmarkets: unable to send HTTP request: %v", err)
 	}
 
-	igResponseInterface, headers, err := ig.doRequestWithResponseHeaders(req, 2, SessionVersion2{}, false)
+	igResponseInterface, headers, err := ig.doRequestWithResponseHeaders(ctx, req, 2, SessionVersion2{}, false)
 	if err != nil {
 		return nil, err
 	}
