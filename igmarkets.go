@@ -736,7 +736,7 @@ func (ig *IGMarkets) DeleteOTCWorkingOrder(dealRef string) (*DealReference, erro
 		return nil, fmt.Errorf("igmarkets: unable to create HTTP request: %v", err)
 	}
 
-	igResponseInterface, err := ig.doRequest(req, 2, nil)
+	igResponseInterface, err := ig.doRequest(req, 2, DealReference{})
 	if err != nil {
 		return nil, err
 	}
