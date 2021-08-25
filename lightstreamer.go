@@ -3,7 +3,6 @@ package igmarkets
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -206,34 +205,4 @@ func (ig *IGMarkets) readLightStreamSubscription(epics []string, tickReceiver ch
 		tickReceiver <- tick
 		lastTicks[epic] = tick
 	}
-}
-
-// LoginVersion2 - use old login version. contains required data for LightStreamer API
-func (ig *IGMarkets) LoginVersion2(ctx context.Context) (*SessionVersion2, error) {
-	bodyReq := new(bytes.Buffer)
-
-	var authReq = authRequest{
-		Identifier: ig.Identifier,
-		Password:   ig.Password,
-	}
-
-	if err := json.NewEncoder(bodyReq).Encode(authReq); err != nil {
-		return nil, fmt.Errorf("igmarkets: unable to encode JSON response: %v", err)
-	}
-
-	req, err := http.NewRequest("POST", fmt.Sprintf("%s/%s", ig.APIURL, "gateway/deal/session"), bodyReq)
-	if err != nil {
-		return nil, fmt.Errorf("igmarkets: unable to send HTTP request: %v", err)
-	}
-
-	igResponseInterface, headers, err := ig.doRequestWithResponseHeaders(ctx, req, 2, SessionVersion2{}, false)
-	if err != nil {
-		return nil, err
-	}
-	session, _ := igResponseInterface.(*SessionVersion2)
-	if headers != nil {
-		session.CSTToken = headers.Get("CST")
-		session.XSTToken = headers.Get("X-SECURITY-TOKEN")
-	}
-	return session, nil
 }
