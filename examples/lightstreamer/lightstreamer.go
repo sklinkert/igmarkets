@@ -5,7 +5,6 @@ import (
 	"github.com/lfritz/env"
 	log "github.com/sirupsen/logrus"
 	"github.com/sklinkert/igmarkets"
-	"time"
 )
 
 var conf struct {
@@ -32,7 +31,7 @@ func main() {
 	var ctx = context.Background()
 
 	for {
-		igHandle := igmarkets.New(conf.igAPIURL, conf.igAPIKey, conf.igAccountID, conf.igIdentifier, conf.igPassword, time.Second*30)
+		igHandle := igmarkets.New(conf.igAPIURL, conf.igAPIKey, conf.igAccountID, conf.igIdentifier, conf.igPassword)
 		if err := igHandle.Login(ctx); err != nil {
 			log.WithError(err).Error("new fialed")
 			return

@@ -53,13 +53,12 @@ type IGMarkets struct {
 }
 
 // New - Create new instance of igmarkets
-func New(apiURL, apiKey, accountID, identifier, password string, httpTimeout time.Duration) *IGMarkets {
+func New(apiURL, apiKey, accountID, identifier, password string) *IGMarkets {
 	if apiURL != DemoAPIURL && apiURL != LiveAPIURL {
 		log.Panic("Invalid endpoint URL", apiURL)
 	}
 
 	httpClient := &http.Client{
-		Timeout: httpTimeout,
 		Transport: &http.Transport{
 			MaxIdleConnsPerHost: 5,
 		},

@@ -5,22 +5,20 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/sklinkert/igmarkets"
 	"os"
-	"time"
 )
 
 func main() {
 	var (
-		url         = igmarkets.DemoAPIURL
-		apiKey      = os.Getenv("IG_API_KEY")
-		accountId   = os.Getenv("IG_ACCOUNT")
-		identifier  = os.Getenv("IG_IDENTIFIER")
-		password    = os.Getenv("IG_PASSWORD")
-		httpTimeout = time.Second * 10
+		url        = igmarkets.DemoAPIURL
+		apiKey     = os.Getenv("IG_API_KEY")
+		accountId  = os.Getenv("IG_ACCOUNT")
+		identifier = os.Getenv("IG_IDENTIFIER")
+		password   = os.Getenv("IG_PASSWORD")
 	)
 
 	var ctx = context.Background()
 
-	var ig = igmarkets.New(url, apiKey, accountId, identifier, password, httpTimeout)
+	var ig = igmarkets.New(url, apiKey, accountId, identifier, password)
 	if err := ig.Login(ctx); err != nil {
 		log.WithError(err).Fatal("Login failed")
 	}

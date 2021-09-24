@@ -3,10 +3,9 @@ package igmarkets
 import (
 	"github.com/AMekss/assert"
 	"testing"
-	"time"
 )
 
 func TestNew(t *testing.T) {
-	igm := New(DemoAPIURL, "", "", "", "", time.Second)
+	igm := New(DemoAPIURL, "", "", "", "")
 	assert.False(t, igm == nil)
 }

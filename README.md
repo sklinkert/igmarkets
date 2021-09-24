@@ -77,9 +77,7 @@ var ig *igmarkets.IGMarkets
 
 func main() {
 	    var ctx = context.Background()
-        var httpTimeout = time.Duration(5 * time.Second)
-
-        ig = igmarkets.New(igmarkets.DemoAPIURL, "APIKEY", "ACCOUNTID", "USERNAME/IDENTIFIER", "PASSWORD", httpTimeout)
+        ig = igmarkets.New(igmarkets.DemoAPIURL, "APIKEY", "ACCOUNTID", "USERNAME/IDENTIFIER", "PASSWORD")
         if err := ig.Login(ctx); err != nil {
                 fmt.Println("Unable to login into IG account", err)
         }
@@ -110,7 +108,7 @@ func main() {
         fmt.Println("New order placed with dealRef", dealRef)
 
         // Check order status
-        confirmation, err := ig.GetDealConfirmation(ctx, dealRef)
+        confirmation, err := ig.GetDealConfirmation(ctx, dealRef.DealReference)
         if err != nil {
                 fmt.Println("Cannot get deal confirmation for:", dealRef, err)
                 return

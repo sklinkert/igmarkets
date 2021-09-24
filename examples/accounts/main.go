@@ -7,7 +7,6 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/sklinkert/igmarkets"
 	"os"
-	"time"
 )
 
 func checkErr(err error) {
@@ -39,8 +38,7 @@ func main() {
 	}
 
 	var ctx = context.Background()
-
-	ig := igmarkets.New(conf.igAPIURL, conf.igAPIKey, conf.igAccountID, conf.igIdentifier, conf.igPassword, time.Second*30)
+	ig := igmarkets.New(conf.igAPIURL, conf.igAPIKey, conf.igAccountID, conf.igIdentifier, conf.igPassword)
 	err := ig.Login(ctx)
 	checkErr(err)
 
