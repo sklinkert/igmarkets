@@ -5,19 +5,44 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 )
+
+const (
+	// ResolutionSecond - 1 second price snapshot
+	ResolutionSecond = "SECOND"
+	// ResolutionMinute - 1 minute price snapshot
+	ResolutionMinute = "MINUTE"
+	// ResolutionHour - 1 hour price snapshot
+	ResolutionHour = "HOUR"
+	// ResolutionTwoHour - 2 hour price snapshot
+	ResolutionTwoHour = "HOUR_2"
+	// ResolutionThreeHour - 3 hour price snapshot
+	ResolutionThreeHour = "HOUR_3"
+	// ResolutionFourHour - 4 hour price snapshot
+	ResolutionFourHour = "HOUR_4"
+	// ResolutionDay - 1 day price snapshot
+	ResolutionDay = "DAY"
+	// ResolutionWeek - 1 week price snapshot
+	ResolutionWeek = "WEEK"
+	// ResolutionMonth - 1 month price snapshot
+	ResolutionMonth = "MONTH"
+)
+
+const timeFormat = "2006-01-02T15:04:05"
 
 // PriceResponse - Response for price query
 type PriceResponse struct {
 	Prices []struct {
-		SnapshotTime     string `json:"snapshotTime"`
-		SnapshotTimeUTC  string `json:"snapshotTimeUTC"`
-		OpenPrice        Price  `json:"openPrice"`
-		LowPrice         Price  `json:"lowPrice"`
-		HighPrice        Price  `json:"highPrice"`
-		ClosePrice       Price  `json:"closePrice"`
-		LastTradedVolume int    `json:"lastTradedVolume"`
+		SnapshotTime          string `json:"snapshotTime"`    // "2021/09/24 13:00:00"
+		SnapshotTimeUTC       string `json:"snapshotTimeUTC"` // "2021-09-24T11:00:00"
+		SnapshotTimeUTCParsed time.Time
+		OpenPrice             Price `json:"openPrice"`
+		LowPrice              Price `json:"lowPrice"`
+		HighPrice             Price `json:"highPrice"`
+		ClosePrice            Price `json:"closePrice"`
+		LastTradedVolume      int   `json:"lastTradedVolume"`
 	}
 	InstrumentType string   `json:"instrumentType"`
 	MetaData       struct{} `json:"-"`
@@ -30,23 +55,23 @@ type Price struct {
 	LastTraded float64 `json:"lastTraded"` // Last traded price
 }
 
-// GetPriceHistory - Return the minute prices for the last 10 minutes for the given epic.
+// GetPriceHistory - Returns a list of historical prices for the given epic, resolution and number of data points
 func (ig *IGMarkets) GetPriceHistory(ctx context.Context, epic, resolution string, max int, from, to time.Time) (*PriceResponse, error) {
-	bodyReq := new(bytes.Buffer)
+	var parameters = []string{"pageSize=100"}
 
-	limitStr := ""
-	if !to.IsZero() && !from.IsZero() {
-		fromStr := from.Format("2006-01-02T15:04:05")
-		toStr := to.Format("2006-01-02T15:04:05")
-		limitStr = fmt.Sprintf("&from=%s&to=%s", fromStr, toStr)
-	} else if max > 0 {
-		limitStr = fmt.Sprintf("&max=%d", max)
+	if max > 0 {
+		parameters = append(parameters, fmt.Sprintf("max=%d", max))
+	}
+	if !from.IsZero() {
+		parameters = append(parameters, fmt.Sprintf("from=%s", from.Format(timeFormat)))
+	}
+	if !to.IsZero() {
+		parameters = append(parameters, fmt.Sprintf("to=%s", from.Format(timeFormat)))
 	}
 
-	page := "&max=100&pageSize=100"
-
-	req, err := http.NewRequest("GET", fmt.Sprintf("%s/gateway/deal/prices/%s?resolution=%s",
-		ig.APIURL, epic, resolution)+limitStr+page, bodyReq)
+	bodyReq := new(bytes.Buffer)
+	req, err := http.NewRequest("GET", fmt.Sprintf("%s/gateway/deal/prices/%s?resolution=%s%s",
+		ig.APIURL, epic, resolution, strings.Join(parameters, "&")), bodyReq)
 	if err != nil {
 		return nil, fmt.Errorf("igmarkets: unable to get price: %v", err)
 	}
@@ -55,9 +80,14 @@ func (ig *IGMarkets) GetPriceHistory(ctx context.Context, epic, resolution strin
 	if err != nil {
 		return nil, err
 	}
-	igResponse, _ := igResponseInterface.(*PriceResponse)
+	priceResponse, _ := igResponseInterface.(*PriceResponse)
 
-	return igResponse, err
+	for i := range priceResponse.Prices {
+		priceResponse.Prices[i].SnapshotTimeUTCParsed, _ =
+			time.Parse(timeFormat, priceResponse.Prices[i].SnapshotTimeUTC)
+	}
+
+	return priceResponse, err
 }
 
 // GetPrice - Return the minute prices for the last 10 minutes for the given epic.

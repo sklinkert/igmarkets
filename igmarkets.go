@@ -13,25 +13,6 @@ import (
 )
 
 const (
-	// ResolutionSecond - 1 second price snapshot
-	ResolutionSecond = "SECOND"
-	// ResolutionMinute - 1 minute price snapshot
-	ResolutionMinute = "MINUTE"
-	// ResolutionHour - 1 hour price snapshot
-	ResolutionHour = "HOUR"
-	// ResolutionTwoHour - 2 hour price snapshot
-	ResolutionTwoHour = "HOUR_2"
-	// ResolutionThreeHour - 3 hour price snapshot
-	ResolutionThreeHour = "HOUR_3"
-	// ResolutionFourHour - 4 hour price snapshot
-	ResolutionFourHour = "HOUR_4"
-	// ResolutionDay - 1 day price snapshot
-	ResolutionDay = "DAY"
-	// ResolutionWeek - 1 week price snapshot
-	ResolutionWeek = "WEEK"
-	// ResolutionMonth - 1 month price snapshot
-	ResolutionMonth = "MONTH"
-
 	// DemoAPIURL - Demo API URL
 	DemoAPIURL = "https://demo-api.ig.com"
 	// LiveAPIURL - Live API URL - Real trading!
