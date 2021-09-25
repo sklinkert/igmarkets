@@ -66,7 +66,7 @@ func (ig *IGMarkets) GetPriceHistory(ctx context.Context, epic, resolution strin
 		parameters = append(parameters, fmt.Sprintf("from=%s", from.Format(timeFormat)))
 	}
 	if !to.IsZero() {
-		parameters = append(parameters, fmt.Sprintf("to=%s", from.Format(timeFormat)))
+		parameters = append(parameters, fmt.Sprintf("to=%s", to.Format(timeFormat)))
 	}
 
 	bodyReq := new(bytes.Buffer)
