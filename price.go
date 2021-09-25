@@ -70,8 +70,9 @@ func (ig *IGMarkets) GetPriceHistory(ctx context.Context, epic, resolution strin
 	}
 
 	bodyReq := new(bytes.Buffer)
-	req, err := http.NewRequest("GET", fmt.Sprintf("%s/gateway/deal/prices/%s?resolution=%s&%s",
-		ig.APIURL, epic, resolution, strings.Join(parameters, "&")), bodyReq)
+	url := fmt.Sprintf("%s/gateway/deal/prices/%s?resolution=%s&%s",
+		ig.APIURL, epic, resolution, strings.Join(parameters, "&"))
+	req, err := http.NewRequest("GET", url, bodyReq)
 	if err != nil {
 		return nil, fmt.Errorf("igmarkets: unable to get price: %v", err)
 	}
