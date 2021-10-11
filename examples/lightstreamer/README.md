@@ -2,7 +2,7 @@
 ## Example usage:
 
 ```bash
-IG_ACCOUNT=ABCDE IG_IDENTIFIER=myuser IG_PASSWORD=secret IG_API_KEY=jenfhernfi34f43n go run cmd/lightstreamer/main.go
+$ IG_ACCOUNT=ABCDE IG_IDENTIFIER=myuser IG_PASSWORD=secret IG_API_KEY=jenfhernfi34f43n go run examples/lightstreamer/lightstreamer.go 
 INFO[0002] Tick: {Epic:CS.D.BITCOIN.CFD.IP Time:2021-06-09 10:57:18 +0100 BST Bid:34069.3 Ask:34219.3}
 INFO[0002] Tick: {Epic:CS.D.BITCOIN.CFD.IP Time:2021-06-09 10:57:18 +0100 BST Bid:34069.5 Ask:34219.5}
 INFO[0003] Tick: {Epic:CS.D.BITCOIN.CFD.IP Time:2021-06-09 10:57:19 +0100 BST Bid:34069.1 Ask:34219.1}
