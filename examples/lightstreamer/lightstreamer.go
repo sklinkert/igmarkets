@@ -13,12 +13,12 @@ var conf struct {
 	igAPIKey     string
 	igPassword   string
 	igAccountID  string
-	instrument   string
+	epics        []string
 }
 
 func main() {
 	var e = env.New()
-	e.OptionalString("INSTRUMENT", &conf.instrument, "CS.D.EURUSD.MINI.IP", "instrument to trade")
+	e.OptionalList("EPICS", &conf.epics, ",", []string{"CS.D.EURUSD.MINI.IP", "CS.D.BITCOIN.CFD.IP"}, "Instruments to subscribe")
 	e.OptionalString("IG_API_URL", &conf.igAPIURL, igmarkets.DemoAPIURL, "IG API URL")
 	e.OptionalString("IG_IDENTIFIER", &conf.igIdentifier, "", "IG Identifier")
 	e.OptionalString("IG_API_KEY", &conf.igAPIKey, "", "IG API key")
@@ -38,7 +38,7 @@ func main() {
 		}
 
 		tickChan := make(chan igmarkets.LightStreamerTick)
-		err := igHandle.OpenLightStreamerSubscription(ctx, []string{"CS.D.EURUSD.MINI.IP", "CS.D.BITCOIN.CFD.IP"}, tickChan)
+		err := igHandle.OpenLightStreamerSubscription(ctx, conf.epics, tickChan)
 		if err != nil {
 			log.WithError(err).Error("open stream fialed")
 		}
