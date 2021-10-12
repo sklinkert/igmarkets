@@ -202,6 +202,7 @@ func (ig *IGMarkets) lightstreamerReadSubscription(epics []string, tickReceiver 
 
 		epic, found := epicIndex[tableIndex]
 		if !found {
+			fmt.Printf("unknown epic %q\n", tableIndex)
 			epic = epicNameUnknown
 		}
 
