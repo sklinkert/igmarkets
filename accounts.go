@@ -11,7 +11,7 @@ const (
 	AccountTypeCFD         = "CFD"
 	AccountTypePhysical    = "PHYSICAL"
 	AccountTypeSpreadbet   = "SPREADBET"
-	AccountStatusEnabed    = "ENABLED"
+	AccountStatusEnabled   = "ENABLED"
 	AccountStatusDisabled  = "DISABLED"
 	AccountStatusSuspended = "SUSPENDED_FROM_DEALING"
 )
