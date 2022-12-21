@@ -20,7 +20,7 @@ type Position struct {
 		ControlledRisk       bool    `json:"controlledRisk"`
 		CreatedDate          string  `json:"createdDate"`
 		CreatedDateUTC       string  `json:"createdDateUTC"`
-		Currencry            string  `json:"currency"`
+		Currency             string  `json:"currency"`
 		DealID               string  `json:"dealId"`
 		DealReference        string  `json:"dealReference"`
 		Direction            string  `json:"direction"`

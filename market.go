@@ -19,7 +19,7 @@ type MarketData struct {
 	InstrumentType           string  `json:"instrumentType"`
 	LotSize                  float64 `json:"lotSize"`
 	Low                      float64 `json:"low"`
-	MarektStatus             string  `json:"marketStatus"`
+	MarketStatus             string  `json:"marketStatus"`
 	NetChange                float64 `json:"netChange"`
 	Offer                    float64 `json:"offer"`
 	PercentageChange         float64 `json:"percentageChange"`
