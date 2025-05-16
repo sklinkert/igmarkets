@@ -6,9 +6,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/cenkalti/backoff/v4"
-	"github.com/gorilla/websocket"
-	log "github.com/sirupsen/logrus"
 	"io"
 	"math/rand"
 	"net/http"
@@ -19,37 +16,43 @@ import (
 	"strings"
 	"sync/atomic"
 	"time"
+
+	"github.com/cenkalti/backoff/v4"
+	"github.com/gorilla/websocket"
+	log "github.com/sirupsen/logrus"
 )
 
 type LightStreamerConnection struct {
-	ig                     *IGMarkets
-	sessionID              string
-	serverHostname         string
-	sessionBindTime        time.Time
-	wsConn                 *websocket.Conn
-	nextSubscriptionId     int
-	heartbeatTicker        *time.Ticker
-	ctx                    context.Context
-	cancelFunc             func()
-	lastError              error
-	closeRequested         atomic.Bool
-	marketSubscriptions    []*subscription[MarketTick]
-	chartTickSubscriptions []*subscription[ChartTick]
-	tradeSubscriptions     []*subscription[TradeUpdate]
-	priceTimestampsByEpic  map[string]struct{ fetchTime, priceTime time.Time }
-	subscriptionReqChan    chan interface{}
+	ig                       *IGMarkets
+	sessionID                string
+	serverHostname           string
+	sessionBindTime          time.Time
+	wsConn                   *websocket.Conn
+	nextSubscriptionId       int
+	heartbeatTicker          *time.Ticker
+	ctx                      context.Context
+	cancelFunc               func()
+	lastError                error
+	closeRequested           atomic.Bool
+	marketSubscriptions      []*subscription[MarketTick]
+	chartTickSubscriptions   []*subscription[ChartTick]
+	chartCandleSubscriptions []*subscription[ChartCandle]
+	tradeSubscriptions       []*subscription[TradeUpdate]
+	priceTimestampsByEpic    map[string]struct{ fetchTime, priceTime time.Time }
+	subscriptionReqChan      chan interface{}
 }
 
-type subscription[T MarketTick | ChartTick | TradeUpdate] struct {
+type subscription[T MarketTick | ChartTick | ChartCandle | TradeUpdate] struct {
 	channel         chan T
 	subscriptionId  string
 	requestID       string
 	items           []string
+	scale           string // Used for ChartCandle subscriptions
 	lastStateByItem map[string]T
 	errChan         chan error
 }
 
-type unsubscription[T MarketTick | ChartTick | TradeUpdate] struct {
+type unsubscription[T MarketTick | ChartTick | ChartCandle | TradeUpdate] struct {
 	channel <-chan T
 	errChan chan error
 }
@@ -95,8 +98,25 @@ type ChartCandle struct {
 	UpdateTime               time.Time `lightstreamer:"UTM,timeFromEpochMilliseconds"`
 	LastTradedVolume         float64   `lightstreamer:"LTV"`
 	IncrementalTradingVolume float64   `lightstreamer:"TTV"`
-
-	// TODO - the rest?
+	DayOpenMid               float64   `lightstreamer:"DAY_OPEN_MID"`
+	DayChangeMid             float64   `lightstreamer:"DAY_NET_CHG_MID"`
+	DayChangePercentMid      float64   `lightstreamer:"DAY_PERC_CHG_MID"`
+	DayHighMid               float64   `lightstreamer:"DAY_HIGH"`
+	DayLowMid                float64   `lightstreamer:"DAY_LOW"`
+	OfferOpen                float64   `lightstreamer:"OFR_OPEN"`
+	OfferHigh                float64   `lightstreamer:"OFR_HIGH"`
+	OfferLow                 float64   `lightstreamer:"OFR_LOW"`
+	OfferClose               float64   `lightstreamer:"OFR_CLOSE"`
+	BidOpen                  float64   `lightstreamer:"BID_OPEN"`
+	BidHigh                  float64   `lightstreamer:"BID_HIGH"`
+	BidLow                   float64   `lightstreamer:"BID_LOW"`
+	BidClose                 float64   `lightstreamer:"BID_CLOSE"`
+	LastTradedPriceOpen      float64   `lightstreamer:"LTP_OPEN"`
+	LastTradedPriceHigh      float64   `lightstreamer:"LTP_HIGH"`
+	LastTradedPriceLow       float64   `lightstreamer:"LTP_LOW"`
+	LastTradedPriceClose     float64   `lightstreamer:"LTP_CLOSE"`
+	Consolidated             bool      `lightstreamer:"CONS_END,boolFromInt"`
+	ConsolidatedTickCount    int       `lightstreamer:"CONS_TICK_COUNT,int"`
 }
 
 type TradeUpdate struct {
@@ -172,6 +192,8 @@ const marketTickFields = "BID OFFER CHANGE CHANGE_PCT UPDATE_TIME MARKET_DELAY M
 
 const tradeFields = "CONFIRMS OPU WOU"
 
+const chartCandleFields = "UTM LTV TTV DAY_OPEN_MID DAY_NET_CHG_MID DAY_PERC_CHG_MID DAY_HIGH DAY_LOW OFR_OPEN OFR_HIGH OFR_LOW OFR_CLOSE BID_OPEN BID_HIGH BID_LOW BID_CLOSE LTP_OPEN LTP_HIGH LTP_LOW LTP_CLOSE CONS_END CONS_TICK_COUNT"
+
 type typeMap struct {
 	typ             reflect.Type
 	fields          string
@@ -191,6 +213,10 @@ var typeMaps = [...]typeMap{
 	{
 		typ:    reflect.TypeOf(TradeUpdate{}),
 		fields: tradeFields,
+	},
+	{
+		typ:    reflect.TypeOf(ChartCandle{}),
+		fields: chartCandleFields,
 	},
 }
 
@@ -275,6 +301,13 @@ func init() {
 			}
 			return reflect.ValueOf(f), nil
 		},
+		"int": func(ls *LightStreamerConnection, epic, s string) (reflect.Value, error) {
+			i, err := strconv.ParseInt(s, 10, 64)
+			if err != nil {
+				return reflect.Value{}, err
+			}
+			return reflect.ValueOf(int(i)), nil
+		},
 	}
 
 	for x := range typeMaps {
@@ -299,8 +332,10 @@ func init() {
 						}
 					} else if t.Field(i).Type == reflect.TypeOf(float64(0)) {
 						conversionFuncs[j] = convFuncs["float64"]
+					} else if t.Field(i).Type == reflect.TypeOf(int(0)) {
+						conversionFuncs[j] = convFuncs["int"]
 					} else {
-						panic(fmt.Sprintf("unhandled field type %s", t.Field(i).Type))
+						panic(fmt.Sprintf("unhandled field type %s for field %s", t.Field(i).Type, field))
 					}
 				}
 			}
@@ -592,6 +627,36 @@ func (ls *LightStreamerConnection) writeLoop(ctx context.Context) {
 
 				ls.tradeSubscriptions = append(ls.tradeSubscriptions, &subReq)
 				// Read loop should handle REQOK/SUBOK/ERROR
+			case subscription[ChartCandle]:
+				ls.nextSubscriptionId++
+				requestID := rand.Int63()
+				var items = make([]string, len(subReq.items))
+				for i, epic := range subReq.items {
+					items[i] = fmt.Sprintf("CHART:%s:%s", epic, subReq.scale)
+				}
+				subReq.requestID = fmt.Sprintf("%d", requestID)
+				subReq.subscriptionId = fmt.Sprintf("%d", ls.nextSubscriptionId)
+				subReq.lastStateByItem = make(map[string]ChartCandle)
+				ctrlVals := url.Values{}
+				ctrlVals.Set("LS_op", "add")
+				ctrlVals.Set("LS_mode", "MERGE")
+				ctrlVals.Set("LS_snapshot", "true")
+				ctrlVals.Set("LS_subId", fmt.Sprintf("%s", subReq.subscriptionId))
+				ctrlVals.Set("LS_group", strings.Join(items, " "))
+				ctrlVals.Set("LS_schema", chartCandleFields)
+				ctrlVals.Set("LS_reqId", fmt.Sprintf("%s", subReq.requestID))
+				msg := []byte("control\r\n" + ctrlVals.Encode())
+				err := ls.wsConn.WriteMessage(websocket.TextMessage, msg)
+				if err != nil {
+					subReq.errChan <- err
+					if !ls.closeRequested.Load() {
+						ls.fatalError(err)
+					}
+					return
+				}
+
+				ls.chartCandleSubscriptions = append(ls.chartCandleSubscriptions, &subReq)
+				// Read loop should handle REQOK/SUBOK/ERROR
 			case unsubscription[MarketTick]:
 				sendUnsubscribeRequest(ls, subReq, ls.marketSubscriptions)
 				// reader will receive UNSUB
@@ -600,6 +665,9 @@ func (ls *LightStreamerConnection) writeLoop(ctx context.Context) {
 				// reader will receive UNSUB
 			case unsubscription[TradeUpdate]:
 				sendUnsubscribeRequest(ls, subReq, ls.tradeSubscriptions)
+				// reader will receive UNSUB
+			case unsubscription[ChartCandle]:
+				sendUnsubscribeRequest(ls, subReq, ls.chartCandleSubscriptions)
 				// reader will receive UNSUB
 			default:
 				panic(fmt.Sprintf("unknown subscription request type %T", subReqI))
@@ -706,6 +774,31 @@ func (ls *LightStreamerConnection) handleUpdate(args []string) {
 			return
 		}
 	}
+
+	for _, sub := range ls.chartCandleSubscriptions {
+		if sub.subscriptionId == subID {
+			if itemIdIndex < 0 || itemIdIndex >= len(sub.items) {
+				log.Printf("epic index %d out of range\n", itemIdIndex)
+				return
+			}
+			epic := sub.items[itemIdIndex]
+			lastState := sub.lastStateByItem[epic]
+			chartCandle := lastState
+			chartCandle.Epic = epic
+			chartCandle.RecvTime = time.Now()
+			chartCandle.RawUpdate = args[3]
+			chartCandle.Scale = sub.scale
+			err = parseUpdate(ls, args[3], "Epic", reflect.ValueOf(&chartCandle))
+			if err != nil {
+				log.Printf("failed to parse update %s: %s\n", args[3], err)
+				return
+			}
+			sub.channel <- chartCandle
+			sub.lastStateByItem[epic] = chartCandle
+			return
+		}
+	}
+
 	for _, sub := range ls.tradeSubscriptions {
 		if sub.subscriptionId == subID {
 			if itemIdIndex < 0 || itemIdIndex >= len(sub.items) {
@@ -752,6 +845,7 @@ func parseUpdate(ls *LightStreamerConnection, update string, itemIDField string,
 		if i+offset >= len(structFields) {
 			return fmt.Errorf("unexpected extra field '%s' in update '%s'", field, update)
 		}
+
 		switch field {
 		case "#", "$", "":
 			// null, empty, empty respectively
@@ -782,9 +876,10 @@ func (ls *LightStreamerConnection) handleReqErr(args []string) {
 	handleReqErr(args, ls.marketSubscriptions)
 	handleReqErr(args, ls.chartTickSubscriptions)
 	handleReqErr(args, ls.tradeSubscriptions)
+	handleReqErr(args, ls.chartCandleSubscriptions)
 }
 
-func handleReqErr[T MarketTick | ChartTick | TradeUpdate](args []string, subs []*subscription[T]) {
+func handleReqErr[T MarketTick | ChartTick | ChartCandle | TradeUpdate](args []string, subs []*subscription[T]) {
 	reqID := args[1]
 	for _, sub := range subs {
 		if sub.requestID == reqID {
@@ -796,7 +891,7 @@ func handleReqErr[T MarketTick | ChartTick | TradeUpdate](args []string, subs []
 	}
 }
 
-func sendUnsubscribeRequest[T MarketTick | ChartTick | TradeUpdate](ls *LightStreamerConnection, unSubReq unsubscription[T], subs []*subscription[T]) {
+func sendUnsubscribeRequest[T MarketTick | ChartTick | ChartCandle | TradeUpdate](ls *LightStreamerConnection, unSubReq unsubscription[T], subs []*subscription[T]) {
 	found := false
 	for _, sub := range subs {
 		if sub.channel == unSubReq.channel {
@@ -855,6 +950,14 @@ func (ls *LightStreamerConnection) handleSubOk(args []string) {
 			break
 		}
 	}
+	for _, sub := range ls.chartCandleSubscriptions {
+		if sub.subscriptionId == subID {
+			select {
+			case sub.errChan <- nil:
+			}
+			break
+		}
+	}
 }
 
 func (ls *LightStreamerConnection) handleUnsubscribe(args []string) {
@@ -867,9 +970,10 @@ func (ls *LightStreamerConnection) handleUnsubscribe(args []string) {
 	handleUnsubscribe(subID, &ls.marketSubscriptions)
 	handleUnsubscribe(subID, &ls.chartTickSubscriptions)
 	handleUnsubscribe(subID, &ls.tradeSubscriptions)
+	handleUnsubscribe(subID, &ls.chartCandleSubscriptions)
 }
 
-func handleUnsubscribe[T MarketTick | ChartTick | TradeUpdate](subID string, subs *[]*subscription[T]) {
+func handleUnsubscribe[T MarketTick | ChartTick | ChartCandle | TradeUpdate](subID string, subs *[]*subscription[T]) {
 	var foundIndex int
 	var found bool
 	for i, sub := range *subs {
@@ -952,6 +1056,13 @@ func (ls *LightStreamerConnection) fatalError(err error) {
 				return err
 			}
 		}
+		for _, cs := range ls.chartCandleSubscriptions {
+			_, err = subscribe(lsNew, lsNew.ctx, *cs)
+			if err != nil {
+				_ = lsNew.Close()
+				return err
+			}
+		}
 		ls.closeRequested.Store(true)
 		ls.cancelFunc()
 		_ = ls.wsConn.Close()
@@ -1001,16 +1112,31 @@ func (ls *LightStreamerConnection) UnsubscribeMarkets(tickChan <-chan MarketTick
 	return unsubscribe(ls, tickChan)
 }
 
-func makeNewSubscription[T MarketTick | ChartTick | TradeUpdate](items []string, bufferSize int) subscription[T] {
+func (ls *LightStreamerConnection) SubscribeChartCandles(ctx context.Context, bufferSize int, scale string, epics ...string) (<-chan ChartCandle, error) {
+	if ls.closeRequested.Load() {
+		return nil, fmt.Errorf("cannot subscribe using a closed lightstreamer connection")
+	}
+
+	subReq := makeNewSubscription[ChartCandle](epics, bufferSize)
+	subReq.scale = scale
+	return subscribe(ls, ctx, subReq)
+}
+
+func (ls *LightStreamerConnection) UnsubscribeChartCandles(candleChan <-chan ChartCandle) error {
+	return unsubscribe(ls, candleChan)
+}
+
+func makeNewSubscription[T MarketTick | ChartTick | ChartCandle | TradeUpdate](items []string, bufferSize int) subscription[T] {
 	subReq := subscription[T]{
-		channel: make(chan T, bufferSize),
-		items:   items,
-		errChan: make(chan error),
+		channel:         make(chan T, bufferSize),
+		items:           items,
+		errChan:         make(chan error, 1),
+		lastStateByItem: make(map[string]T),
 	}
 	return subReq
 }
 
-func subscribe[T MarketTick | ChartTick | TradeUpdate](ls *LightStreamerConnection, ctx context.Context, subReq subscription[T]) (<-chan T, error) {
+func subscribe[T MarketTick | ChartTick | ChartCandle | TradeUpdate](ls *LightStreamerConnection, ctx context.Context, subReq subscription[T]) (<-chan T, error) {
 	select {
 	case ls.subscriptionReqChan <- subReq:
 		select {
@@ -1027,7 +1153,7 @@ func subscribe[T MarketTick | ChartTick | TradeUpdate](ls *LightStreamerConnecti
 	}
 }
 
-func unsubscribe[T MarketTick | ChartTick | TradeUpdate](ls *LightStreamerConnection, tickChan <-chan T) error {
+func unsubscribe[T MarketTick | ChartTick | ChartCandle | TradeUpdate](ls *LightStreamerConnection, tickChan <-chan T) error {
 	if ls.closeRequested.Load() {
 		return fmt.Errorf("cannot unsubscribe using a closed lightstreamer connection")
 	}
@@ -1050,8 +1176,12 @@ func (ls *LightStreamerConnection) Close() error {
 		for _, sub := range ls.chartTickSubscriptions {
 			close(sub.channel)
 		}
+		for _, sub := range ls.chartCandleSubscriptions {
+			close(sub.channel)
+		}
 		ls.chartTickSubscriptions = nil
 		ls.marketSubscriptions = nil
+		ls.chartCandleSubscriptions = nil
 	}()
 
 	err := ls.wsConn.WriteControl(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseGoingAway, ""), time.Time{})
