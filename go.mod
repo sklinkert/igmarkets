@@ -7,7 +7,7 @@ require (
 	github.com/cenkalti/backoff/v4 v4.3.0
 	github.com/gorilla/websocket v1.5.3
 	github.com/lfritz/env v1.0.0
-	github.com/sirupsen/logrus v1.9.3
+	github.com/sirupsen/logrus v1.9.4
 )
 
 require golang.org/x/sys v0.18.0 // indirect
